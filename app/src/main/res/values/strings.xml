@@ -27,5 +27,14 @@
     <string name="title_activity_register">Register</string>
     <string name="error_incorrect_password">This password is incorrect</string>
     <string name="user_name">Username</string>
+    <string name="removedevice">Remove Device</string>
+    <string name="remove_device_dialog_message">Are you sure you want to remove device?</string>
+    <string name="remove_device_dialog_title">Device removal</string>
+    <string name="ok">Ok</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="deviceInformation">Device Information</string>
+    <string name="device_information_title">Device Infromation</string>
+    <string name="updatename">Update Device Name</string>
 
 </resources>

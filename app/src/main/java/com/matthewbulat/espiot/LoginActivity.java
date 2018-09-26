@@ -333,7 +333,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
             URL url;
             try {
-                String stringUrl = String.format("http://%s/userLogin"
+                String stringUrl = String.format("https://%s/userLogin"
                         ,SYSTEM_DOMAIN);
                 url = new URL(stringUrl);
 

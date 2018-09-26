@@ -14,6 +14,8 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
 
 import com.matthewbulat.espiot.Database.devices.DeviceDB;
 import com.matthewbulat.espiot.Database.devices.DeviceTable;
@@ -41,7 +43,7 @@ public class MainActivity extends AppCompatActivity
     private UserDB userDB;
     private DeviceDB deviceDB;
     private SwipeRefreshLayout swipeContainer;
-
+//todo add long press to remove a device
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,21 +65,27 @@ public class MainActivity extends AppCompatActivity
 
 
             DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+
+
             ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                     this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
             drawer.addDrawerListener(toggle);
             toggle.syncState();
 
-            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+            NavigationView navigationView = findViewById(R.id.nav_view);
             navigationView.setNavigationItemSelectedListener(this);
+            View headerView = navigationView.getHeaderView(0);
+            TextView navUsername = headerView.findViewById(R.id.user_name_text_field);
+            navUsername.setText(userDB.userDao().getUser().get(0).getUserName());
+
 
             deviceTables = deviceDB.devicesDao().getDevices();
-            if(deviceTables.size()==0){
+            if (deviceTables.size() == 0) {
                 DeviceListRequest deviceListRequest = new DeviceListRequest("fresh");
                 deviceListRequest.execute((Void) null);
-            }else{
+            } else {
                 arrayListOfDevices = new ArrayList<>();
-                for(DeviceTable deviceTable : deviceTables){
+                for (DeviceTable deviceTable : deviceTables) {
                     Message message = new Message();
                     message.setDeviceID(deviceTable.getDeviceID());
                     message.setDeviceType(deviceTable.getDeviceType());
@@ -108,6 +116,15 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    public void onResume() {
+        swipeContainer.setRefreshing(true);
+        DeviceListRequest deviceListRequest = new DeviceListRequest("refresh");
+        deviceListRequest.execute((Void) null);
+        super.onResume();
+    }
+
+
+    @Override
     public void onBackPressed() {
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         if (drawer.isDrawerOpen(GravityCompat.START)) {
@@ -126,10 +143,6 @@ public class MainActivity extends AppCompatActivity
         if (id == R.id.addNewDevice) {
             Intent intent = new Intent(MainActivity.this, AddNewDevice.class);
             startActivity(intent);
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -139,9 +152,10 @@ public class MainActivity extends AppCompatActivity
 
     public class DeviceListRequest extends AsyncTask<Void, Void, Message> {
 
-            private String typeOfRequest;
+        private String typeOfRequest;
+
         DeviceListRequest(String typeOfRequest) {
-            this.typeOfRequest=typeOfRequest;
+            this.typeOfRequest = typeOfRequest;
         }
 
         @Override
@@ -150,7 +164,7 @@ public class MainActivity extends AppCompatActivity
             URL url;
             try {
                 List<UserTable> user = userDB.userDao().getUser();
-                String stringUrl = String.format("http://%s/lampAction?" +
+                String stringUrl = String.format("https://%s/lampAction?" +
                                 "userName=%s&" +
                                 "userToken=%s&" +
                                 "lampAction=requestDevicesList"
@@ -189,42 +203,60 @@ public class MainActivity extends AppCompatActivity
 
         @Override
         protected void onPostExecute(final Message message) {
-            if (!message.getDeviceList().isEmpty()) {
-                if(typeOfRequest.equals("fresh")) {
-                    arrayListOfDevices = message.getDeviceList();
-                    deviceRecyclerView = findViewById(R.id.device_recycler_view);
-                    deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
-                    deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
-                    deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                    for (Message message1 : arrayListOfDevices) {
-                        DeviceTable deviceTable = new DeviceTable();
-                        deviceTable.setDeviceDescription(message1.getDeviceDescription());
-                        deviceTable.setDeviceID(message1.getDeviceID());
-                        deviceTable.setDeviceType(message1.getDeviceType());
-                        deviceDB.devicesDao().addDevice(deviceTable);
-                    }
-                }else if(typeOfRequest.equals("refresh")){
-                    arrayListOfDevices = message.getDeviceList();
-                    deviceRecyclerView = findViewById(R.id.device_recycler_view);
-                    deviceRecyclerViewAdapter.clear();
-                    deviceRecyclerViewAdapter.addAll(arrayListOfDevices);
-                    deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
-                    deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                    swipeContainer.setRefreshing(false);
-                    deviceDB.devicesDao().nukeTable();
-                    for (Message message1 : arrayListOfDevices) {
-                        DeviceTable deviceTable = new DeviceTable();
-                        deviceTable.setDeviceDescription(message1.getDeviceDescription());
-                        deviceTable.setDeviceID(message1.getDeviceID());
-                        deviceTable.setDeviceType(message1.getDeviceType());
-                        deviceDB.devicesDao().addDevice(deviceTable);
+            if(message != null) {
+                if (message.getDeviceList() != null) {
+                    if (!message.getDeviceList().isEmpty()) {
+                        if (typeOfRequest.equals("fresh")) {
+                            arrayListOfDevices = message.getDeviceList();
+                            deviceRecyclerView = findViewById(R.id.device_recycler_view);
+                            deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
+                            deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+                            deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                            for (Message message1 : arrayListOfDevices) {
+                                DeviceTable deviceTable = new DeviceTable();
+                                deviceTable.setDeviceDescription(message1.getDeviceDescription());
+                                deviceTable.setDeviceID(message1.getDeviceID());
+                                deviceTable.setDeviceType(message1.getDeviceType());
+                                deviceDB.devicesDao().addDevice(deviceTable);
+                            }
+                        } else if (typeOfRequest.equals("refresh")) {
+                            arrayListOfDevices = message.getDeviceList();
+                            deviceRecyclerView = findViewById(R.id.device_recycler_view);
+                            if(deviceRecyclerViewAdapter!=null){
+                                deviceRecyclerViewAdapter.clear();
+                                deviceRecyclerViewAdapter.addAll(arrayListOfDevices);
+                            }else{
+                                deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
+                            }
+                            deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+                            deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                            swipeContainer.setRefreshing(false);
+                            deviceDB.devicesDao().nukeTable();
+                            for (Message message1 : arrayListOfDevices) {
+                                DeviceTable deviceTable = new DeviceTable();
+                                deviceTable.setDeviceDescription(message1.getDeviceDescription());
+                                deviceTable.setDeviceID(message1.getDeviceID());
+                                deviceTable.setDeviceType(message1.getDeviceType());
+                                deviceDB.devicesDao().addDevice(deviceTable);
+                            }
+                        }
+
+                    } else {
+                        deviceRecyclerView = findViewById(R.id.device_recycler_view);
+                        deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+                        deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+                        swipeContainer.setRefreshing(false);
+                        deviceDB.devicesDao().nukeTable();
+
                     }
                 }
+                swipeContainer.setRefreshing(false);
             }
         }
 
         @Override
         protected void onCancelled() {
+            swipeContainer.setRefreshing(false);
         }
     }
 }

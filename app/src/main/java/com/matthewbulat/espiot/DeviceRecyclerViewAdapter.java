@@ -27,6 +27,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.net.ssl.HttpsURLConnection;
+
 public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecyclerViewAdapter.ViewHolder> {
     private ArrayList<Message> deviceList;
     private Context mContext;
@@ -48,7 +50,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
     public void onBindViewHolder(final ViewHolder holder, final int position) {
         switch (deviceList.get(position).getDeviceType()) {
             case "Lamp":
-                holder.deviceType.setImageResource(R.drawable.ic_flare_black_24dp);
+                holder.deviceType.setImageResource(R.drawable.ic_desk_lamp);
                 break;
         }
         holder.deviceDescription.setText(deviceList.get(position).getDeviceDescription());
@@ -110,11 +112,11 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
             UserDB userDB = Room.databaseBuilder(context, UserDB.class, "userdb").allowMainThreadQueries().build();
             List<UserTable> user = userDB.userDao().getUser();
 
-            String stringUrl = String.format("http://%s/lampAction?" +
+            String stringUrl = String.format("https://%s/lampAction?" +
                             "deviceId=%s&" +
                             "userName=%s&" +
                             "userToken=%s&" +
-                            "lampAction=lampStatus"
+                            "lampAction=lampstatus"
                     , SYSTEM_DOMAIN,
                     message.getDeviceID(),
                     user.get(0).getUserName(),
@@ -124,8 +126,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
             try {
                 url = new URL(stringUrl);
 
-
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
 
                 String text;
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -143,7 +144,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
 
                 Message temp = new Message().decode(text);
 
-                if (temp.getAction().equals("lampStatus")) {
+                if (temp.getAction().equals("lampstatus")) {
                     message.setAction(temp.getAction());
                     message.setLampStatus(temp.getLampStatus());
                 } else {
@@ -162,24 +163,29 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         @Override
         protected void onPostExecute(final Message message) {
             itemSelected=false;
-            switch (message.getAction()) {
-                case "deviceNotConnectedToSystem":
-                    Toast.makeText(context, "Your ESP device is disconnected from the network."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "communicationError":
-                    Toast.makeText(context, "Internal network error, please try again in few moments."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "IncorrectCredentials":
-                    Toast.makeText(context, "Please try again in few moments."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "lampStatus":
-                    Intent intent = new Intent(context, DeviceActions.class);
-                    intent.putExtra("device", message);
-                    context.startActivity(intent);
-                    break;
+            if(message!=null) {
+                switch (message.getAction()) {
+                    case "deviceNotConnectedToSystem":
+                        Toast.makeText(context, "Your ESP device is disconnected from the network."
+                                , Toast.LENGTH_LONG).show();
+                        break;
+                    case "communicationError":
+                        Toast.makeText(context, "Internal network error, please try again in few moments."
+                                , Toast.LENGTH_LONG).show();
+                        break;
+                    case "IncorrectCredentials":
+                        Toast.makeText(context, "Please try again in few moments."
+                                , Toast.LENGTH_LONG).show();
+                        break;
+                    case "lampstatus":
+                        Intent intent = new Intent(context, DeviceActions.class);
+                        intent.putExtra("device", message);
+                        context.startActivity(intent);
+                        break;
+                }
+            }else{
+                Toast.makeText(context, "Unknown error"
+                        , Toast.LENGTH_LONG).show();
             }
         }
 

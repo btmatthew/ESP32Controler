@@ -182,26 +182,26 @@ public class AddNewDevice extends AppCompatActivity {
             WifiConfiguration conf = new WifiConfiguration();
             conf.SSID = String.format("\"%s\"",wifiName);
 
-            conf.preSharedKey = String.format("\"%s\"","password");
+            conf.preSharedKey = String.format("\"%s\"","password1");
 
             int netID = wifiManager.addNetwork(conf);
+
             wifiManager.disconnect();
             wifiManager.enableNetwork(netID, true);
             wifiManager.reconnect();
 
 
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-
             int count =0;
-
             while( wifiInfo.getNetworkId() != netID ){
+                System.out.println(wifiInfo.getNetworkId());
                 if(count==60){
                     wifiManager.disconnect();
                     wifiManager.removeNetwork(netID);
                     return false;
                 }
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(100);
                     wifiInfo = wifiManager.getConnectionInfo();
                 } catch (InterruptedException e) {
                     e.printStackTrace();

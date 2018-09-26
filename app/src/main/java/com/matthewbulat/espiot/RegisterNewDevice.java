@@ -71,7 +71,7 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
         registerDeviceButton = findViewById(R.id.registerDeviceButton);
         mProgressView = findViewById(R.id.registrationProgress);
 
-        userDB = Room.databaseBuilder(getApplicationContext(),UserDB.class,"userdb").build();
+        userDB = Room.databaseBuilder(getApplicationContext(),UserDB.class,"userdb").allowMainThreadQueries().build();
 
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
