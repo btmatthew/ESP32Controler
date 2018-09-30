@@ -23,6 +23,8 @@ import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.ConstantValues;
 import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
+import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,25 +36,31 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, ConstantValues {
 
     DeviceRecyclerViewAdapter deviceRecyclerViewAdapter;
     private ArrayList<Message> arrayListOfDevices;
     private RecyclerView deviceRecyclerView;
-    private UserDB userDB;
     private DeviceDB deviceDB;
     private SwipeRefreshLayout swipeContainer;
+    private IoTAPI ioTAPI;
+    List<UserTable> userTables;
+
 //todo add long press to remove a device
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
 
-        userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").allowMainThreadQueries().build();
+        UserDB userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").allowMainThreadQueries().build();
         deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").allowMainThreadQueries().build();
-
-        List<UserTable> userTables = userDB.userDao().getUser();
+        ioTAPI = ApiUtils.getIoTService();
+        userTables = userDB.userDao().getUser();
         List<DeviceTable> deviceTables;
         if (userTables.size() == 0) {
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
@@ -81,8 +89,7 @@ public class MainActivity extends AppCompatActivity
 
             deviceTables = deviceDB.devicesDao().getDevices();
             if (deviceTables.size() == 0) {
-                DeviceListRequest deviceListRequest = new DeviceListRequest("fresh");
-                deviceListRequest.execute((Void) null);
+                loadDeviceList(userTables.get(0).getUserName(),userTables.get(0).getUserToken(),"requestDevicesList","fresh");
             } else {
                 arrayListOfDevices = new ArrayList<>();
                 for (DeviceTable deviceTable : deviceTables) {
@@ -106,8 +113,7 @@ public class MainActivity extends AppCompatActivity
                     // Your code to refresh the list here.
                     // Make sure you call swipeContainer.setRefreshing(false)
                     // once the network request has completed successfully.
-                    DeviceListRequest deviceListRequest = new DeviceListRequest("refresh");
-                    deviceListRequest.execute((Void) null);
+                    loadDeviceList(userTables.get(0).getUserName(),userTables.get(0).getUserToken(),"requestDevicesList","refresh");
                     //https://guides.codepath.com/android/implementing-pull-to-refresh-guide#overview
                 }
             });
@@ -118,8 +124,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onResume() {
         swipeContainer.setRefreshing(true);
-        DeviceListRequest deviceListRequest = new DeviceListRequest("refresh");
-        deviceListRequest.execute((Void) null);
+        loadDeviceList(userTables.get(0).getUserName(),userTables.get(0).getUserToken(),"requestDevicesList","refresh");
         super.onResume();
     }
 
@@ -134,7 +139,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
@@ -150,64 +154,16 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    public class DeviceListRequest extends AsyncTask<Void, Void, Message> {
 
-        private String typeOfRequest;
+    public void loadDeviceList(String userName, String userToken, String lampAction, final String typeOfRequest){
+        ioTAPI.deviceList(userName,userToken,lampAction).enqueue(new Callback<Message>() {
+            @Override
+            public void onResponse(Call<Message> call, Response<Message> response) {
 
-        DeviceListRequest(String typeOfRequest) {
-            this.typeOfRequest = typeOfRequest;
-        }
-
-        @Override
-        protected Message doInBackground(Void... params) {
-            Message devices = null;
-            URL url;
-            try {
-                List<UserTable> user = userDB.userDao().getUser();
-                String stringUrl = String.format("https://%s/lampAction?" +
-                                "userName=%s&" +
-                                "userToken=%s&" +
-                                "lampAction=requestDevicesList"
-                        , SYSTEM_DOMAIN,
-                        user.get(0).getUserName(),
-                        user.get(0).getUserToken());
-
-                url = new URL(stringUrl);
-
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-                String text;
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-
-                // Read Server Response
-                while ((line = reader.readLine()) != null) {
-                    // Append server response in string
-                    sb.append(line).append("\n");
-                }
-                reader.close();
-                text = sb.toString();
-                conn.disconnect();
-                devices = new Message().decode(text);
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (ProtocolException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return devices;
-        }
-
-        @Override
-        protected void onPostExecute(final Message message) {
-            if(message != null) {
-                if (message.getDeviceList() != null) {
-                    if (!message.getDeviceList().isEmpty()) {
-                        if (typeOfRequest.equals("fresh")) {
-                            arrayListOfDevices = message.getDeviceList();
+                if(response.isSuccessful()) {
+                    switch(typeOfRequest){
+                        case "fresh":
+                            arrayListOfDevices = response.body().getDeviceList();
                             deviceRecyclerView = findViewById(R.id.device_recycler_view);
                             deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
                             deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
@@ -219,8 +175,9 @@ public class MainActivity extends AppCompatActivity
                                 deviceTable.setDeviceType(message1.getDeviceType());
                                 deviceDB.devicesDao().addDevice(deviceTable);
                             }
-                        } else if (typeOfRequest.equals("refresh")) {
-                            arrayListOfDevices = message.getDeviceList();
+                            break;
+                        case "refresh":
+                            arrayListOfDevices = response.body().getDeviceList();
                             deviceRecyclerView = findViewById(R.id.device_recycler_view);
                             if(deviceRecyclerViewAdapter!=null){
                                 deviceRecyclerViewAdapter.clear();
@@ -239,24 +196,128 @@ public class MainActivity extends AppCompatActivity
                                 deviceTable.setDeviceType(message1.getDeviceType());
                                 deviceDB.devicesDao().addDevice(deviceTable);
                             }
-                        }
-
-                    } else {
-                        deviceRecyclerView = findViewById(R.id.device_recycler_view);
-                        deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
-                        deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
-                        swipeContainer.setRefreshing(false);
-                        deviceDB.devicesDao().nukeTable();
-
+                            break;
                     }
+                }else {
+                    swipeContainer.setRefreshing(false);
                 }
+            }
+
+            @Override
+            public void onFailure(Call<Message> call, Throwable t) {
                 swipeContainer.setRefreshing(false);
             }
-        }
-
-        @Override
-        protected void onCancelled() {
-            swipeContainer.setRefreshing(false);
-        }
+        });
     }
+
+
+//    public class DeviceListRequest extends AsyncTask<Void, Void, Message> {
+//
+//        private String typeOfRequest;
+//
+//        DeviceListRequest(String typeOfRequest) {
+//            this.typeOfRequest = typeOfRequest;
+//        }
+//
+//        @Override
+//        protected Message doInBackground(Void... params) {
+//            Message devices = null;
+//            URL url;
+//            try {
+//                List<UserTable> user = userDB.userDao().getUser();
+//                String stringUrl = String.format("https://%s/lampAction?" +
+//                                "userName=%s&" +
+//                                "userToken=%s&" +
+//                                "lampAction=requestDevicesList"
+//                        , SYSTEM_DOMAIN,
+//                        user.get(0).getUserName(),
+//                        user.get(0).getUserToken());
+//
+//                url = new URL(stringUrl);
+//
+//                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//
+//                String text;
+//                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+//                StringBuilder sb = new StringBuilder();
+//                String line;
+//
+//                // Read Server Response
+//                while ((line = reader.readLine()) != null) {
+//                    // Append server response in string
+//                    sb.append(line).append("\n");
+//                }
+//                reader.close();
+//                text = sb.toString();
+//                conn.disconnect();
+//                devices = new Message().decode(text);
+//
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//            } catch (ProtocolException e) {
+//                e.printStackTrace();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            return devices;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(final Message message) {
+//            if(message != null) {
+//                if (message.getDeviceList() != null) {
+//                    if (!message.getDeviceList().isEmpty()) {
+//                        if (typeOfRequest.equals("fresh")) {
+//                            arrayListOfDevices = message.getDeviceList();
+//                            deviceRecyclerView = findViewById(R.id.device_recycler_view);
+//                            deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
+//                            deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+//                            deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+//                            for (Message message1 : arrayListOfDevices) {
+//                                DeviceTable deviceTable = new DeviceTable();
+//                                deviceTable.setDeviceDescription(message1.getDeviceDescription());
+//                                deviceTable.setDeviceID(message1.getDeviceID());
+//                                deviceTable.setDeviceType(message1.getDeviceType());
+//                                deviceDB.devicesDao().addDevice(deviceTable);
+//                            }
+//                        } else if (typeOfRequest.equals("refresh")) {
+//                            arrayListOfDevices = message.getDeviceList();
+//                            deviceRecyclerView = findViewById(R.id.device_recycler_view);
+//                            if(deviceRecyclerViewAdapter!=null){
+//                                deviceRecyclerViewAdapter.clear();
+//                                deviceRecyclerViewAdapter.addAll(arrayListOfDevices);
+//                            }else{
+//                                deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext());
+//                            }
+//                            deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+//                            deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+//                            swipeContainer.setRefreshing(false);
+//                            deviceDB.devicesDao().nukeTable();
+//                            for (Message message1 : arrayListOfDevices) {
+//                                DeviceTable deviceTable = new DeviceTable();
+//                                deviceTable.setDeviceDescription(message1.getDeviceDescription());
+//                                deviceTable.setDeviceID(message1.getDeviceID());
+//                                deviceTable.setDeviceType(message1.getDeviceType());
+//                                deviceDB.devicesDao().addDevice(deviceTable);
+//                            }
+//                        }
+//
+//                    } else {
+//                        deviceRecyclerView = findViewById(R.id.device_recycler_view);
+//                        deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
+//                        deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+//                        swipeContainer.setRefreshing(false);
+//                        deviceDB.devicesDao().nukeTable();
+//
+//                    }
+//                }
+//                swipeContainer.setRefreshing(false);
+//            }
+//        }
+//
+//        @Override
+//        protected void onCancelled() {
+//            swipeContainer.setRefreshing(false);
+//        }
+//    }
 }

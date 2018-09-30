@@ -104,9 +104,6 @@ public class AddNewDevice extends AppCompatActivity {
                 }
             }
         });
-
-
-
     }
 
 

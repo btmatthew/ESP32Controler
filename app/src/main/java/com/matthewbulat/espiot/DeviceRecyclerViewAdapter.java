@@ -3,8 +3,8 @@ package com.matthewbulat.espiot;
 import android.arch.persistence.room.Room;
 import android.content.Context;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,28 +15,27 @@ import android.widget.Toast;
 
 import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
-import com.matthewbulat.espiot.Objects.ConstantValues;
 import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
+import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.net.ssl.HttpsURLConnection;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecyclerViewAdapter.ViewHolder> {
     private ArrayList<Message> deviceList;
     private Context mContext;
     private boolean itemSelected;
+    private IoTAPI ioTAPI;
 
     public DeviceRecyclerViewAdapter(ArrayList<Message> deviceList, Context mContext) {
         this.deviceList = deviceList;
         this.mContext = mContext;
+        this.ioTAPI = ApiUtils.getIoTService();
     }
 
     @Override
@@ -58,8 +57,10 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
             @Override
             public void onClick(View view) {
                 if(!itemSelected) {
-                    DeviceStatus deviceListRequest = new DeviceStatus(holder.parentLayout.getContext(), deviceList.get(position));
-                    deviceListRequest.execute((Void) null);
+                    UserDB userDB = Room.databaseBuilder(mContext, UserDB.class, "userdb").allowMainThreadQueries().build();
+                    UserTable user = userDB.userDao().getUser().get(0);
+
+                    deviceAction(deviceList.get(position),user.getUserName(),user.getUserToken(),"lampstatus");
                 }
             }
         });
@@ -95,106 +96,48 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         }
     }
 
-    public class DeviceStatus extends AsyncTask<Void, Void, Message> implements ConstantValues {
+    public void deviceAction(final Message message, String userName, String userToken, String lampAction){
 
-        private Message message;
-        private Context context;
+        ioTAPI.lampActions(message.getDeviceID(),userName,userToken,lampAction).enqueue(new Callback<Message>() {
+            @Override
+            public void onResponse(Call<Message> call, Response<Message> response) {
 
+                if(response.isSuccessful()) {
 
-        DeviceStatus(Context context, Message message) {
-            this.context = context;
-            this.message = message;
-            itemSelected=true;
-        }
+                    System.out.println(response.body().getAction());
 
-        @Override
-        protected Message doInBackground(Void... params) {
-            UserDB userDB = Room.databaseBuilder(context, UserDB.class, "userdb").allowMainThreadQueries().build();
-            List<UserTable> user = userDB.userDao().getUser();
+                    switch (response.body().getAction()) {
+                        case "deviceNotConnectedToSystem":
+                            Toast.makeText(mContext, "Your ESP device is disconnected from the network."
+                                    , Toast.LENGTH_LONG).show();
+                            break;
+                        case "communicationError":
+                            Toast.makeText(mContext, "Internal network error, please try again in few moments."
+                                    , Toast.LENGTH_LONG).show();
+                            break;
+                        case "IncorrectCredentials":
+                            Toast.makeText(mContext, "Please try again in few moments."
+                                    , Toast.LENGTH_LONG).show();
+                            break;
+                        case "lampstatus":
 
-            String stringUrl = String.format("https://%s/lampAction?" +
-                            "deviceId=%s&" +
-                            "userName=%s&" +
-                            "userToken=%s&" +
-                            "lampAction=lampstatus"
-                    , SYSTEM_DOMAIN,
-                    message.getDeviceID(),
-                    user.get(0).getUserName(),
-                    user.get(0).getUserToken());
-
-            URL url;
-            try {
-                url = new URL(stringUrl);
-
-                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-
-                String text;
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-
-                // Read Server Response
-                while ((line = reader.readLine()) != null) {
-                    // Append server response in string
-                    sb.append(line).append("\n");
+                            Intent intent = new Intent(mContext, DeviceActions.class);
+                            response.body().setDeviceID(message.getDeviceID());
+                            response.body().setDeviceDescription(message.getDeviceDescription());
+                            Log.i("returnMessage",response.body().encode());
+                            intent.putExtra("device", response.body());
+                            mContext.startActivity(intent);
+                            break;
+                    }
+                }else{
+                    //todo test this
                 }
-                reader.close();
-                text = sb.toString();
-                conn.disconnect();
-
-                Message temp = new Message().decode(text);
-
-                if (temp.getAction().equals("lampstatus")) {
-                    message.setAction(temp.getAction());
-                    message.setLampStatus(temp.getLampStatus());
-                } else {
-                    message.setAction(temp.getAction());
-                }
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
-            return message;
-        }
 
-        @Override
-        protected void onPostExecute(final Message message) {
-            itemSelected=false;
-            if(message!=null) {
-                switch (message.getAction()) {
-                    case "deviceNotConnectedToSystem":
-                        Toast.makeText(context, "Your ESP device is disconnected from the network."
-                                , Toast.LENGTH_LONG).show();
-                        break;
-                    case "communicationError":
-                        Toast.makeText(context, "Internal network error, please try again in few moments."
-                                , Toast.LENGTH_LONG).show();
-                        break;
-                    case "IncorrectCredentials":
-                        Toast.makeText(context, "Please try again in few moments."
-                                , Toast.LENGTH_LONG).show();
-                        break;
-                    case "lampstatus":
-                        Intent intent = new Intent(context, DeviceActions.class);
-                        intent.putExtra("device", message);
-                        context.startActivity(intent);
-                        break;
-                }
-            }else{
-                Toast.makeText(context, "Unknown error"
-                        , Toast.LENGTH_LONG).show();
+            @Override
+            public void onFailure(Call<Message> call, Throwable t) {
+
             }
-        }
-
-
-        @Override
-        protected void onCancelled() {
-            itemSelected=false;
-        }
+        });
     }
-
-
 }

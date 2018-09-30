@@ -4,18 +4,29 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import com.google.gson.Gson;
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
 
 public class Message implements Parcelable {
-
+    @SerializedName("action")
+    @Expose
     private String action;
+    @SerializedName("deviceDescription")
+    @Expose
     private String deviceDescription;
+    @SerializedName("deviceID")
+    @Expose
     private String deviceID;
+    @SerializedName("deviceType")
+    @Expose
     private String deviceType;
-
+    @SerializedName("deviceList")
+    @Expose
     private ArrayList<Message> deviceList;
-
+    @SerializedName("lampStatus")
+    @Expose
     private String lampStatus;
 
     public Message() {
