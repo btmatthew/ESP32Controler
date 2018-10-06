@@ -166,11 +166,10 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
             public void onResponse(Call<Message> call, Response<Message> response) {
 
                 if(response.isSuccessful()) {
-
                     System.out.println(response.body().getAction());
                     finishAPIAction(response.body());
                 }else {
-                    //todo test this
+                    //todo find out what to do here
                 }
 
             }
