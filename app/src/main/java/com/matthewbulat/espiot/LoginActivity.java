@@ -54,6 +54,15 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.Scheduler;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -82,6 +91,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private View mLoginFormView;
     private UserDB userDB;
     private IoTAPI ioTAPI;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,32 +103,21 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         populateAutoComplete();
         userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").build();
         mPasswordView = findViewById(R.id.password_login);
-        mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
-                    return true;
-                }
-                return false;
+        mPasswordView.setOnEditorActionListener((textView, id, keyEvent) -> {
+            if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                attemptLogin();
+                return true;
             }
+            return false;
         });
 
         Button loginButton = findViewById(R.id.login_button);
-        loginButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                attemptLogin();
-            }
-        });
+        loginButton.setOnClickListener(view -> attemptLogin());
 
         Button registerButton = findViewById(R.id.register_button_activity);
-        registerButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                getApplicationContext().startActivity(intent);
-            }
+        registerButton.setOnClickListener(view -> {
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            getApplicationContext().startActivity(intent);
         });
 
 
@@ -175,9 +174,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      * errors are presented and no actual login attempt is made.
      */
     private void attemptLogin() {
-//        if (mAuthTask != null) {
-//            return;
-//        }
 
         // Reset errors.
         mEmailView.setError(null);
@@ -216,9 +212,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            loginToSystem(email, password);
-//            mAuthTask = new UserLoginTask(email, password);
-//            mAuthTask.execute((Void) null);
+            User user = new User();
+            user.setUserEmail(email);
+            user.setPassword(password);
+            systemLogin(user);
         }
     }
 
@@ -322,180 +319,91 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         int IS_PRIMARY = 1;
     }
 
+    public void systemLogin(User user) {
+        compositeDisposable.add(ioTAPI.userLogin(user)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<User>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
 
-    public void loginToSystem(String email, String password) {
-        ioTAPI.userLogin(email, password).enqueue(new Callback<User>() {
-            @Override
-            public void onResponse(Call<User> call, Response<User> response) {
-                if (response.isSuccessful()) {
-                    Log.i("REPLY", "user login request successful");
-                    switch (response.body().getAction()) {
-                        case "LoginSuccessful":
-                            UserTable userTable = new UserTable();
-                            userTable.setUserName(response.body().getUserName());
-                            userTable.setUserToken(response.body().getUserToken());
-                            userDB.userDao().addUser(userTable);
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
 
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            startActivity(intent);
-                            break;
-                        case "IncorrectLoginCredentials":
-                            mPasswordView.setError(getString(R.string.incorrect_credentials));
-                            mPasswordView.requestFocus();
-                            break;
-                        case "CommunicationError":
-                            Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                        case "DataMissing":
-                            Toast.makeText(getApplicationContext(), "Check your text fields and try again"
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                        case "UnknownError":
-                            Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                    }
-                } else {
-                    //todo find out what to do here
-                }
-                showProgress(false);
-            }
+                                   @Override
+                                   public void onNext(User value) {
+                                       loginResponse(value);
+                                   }
+                               }
+                )
+        );
+    }
 
-            @Override
-            public void onFailure(Call<User> call, Throwable t) {
-                showProgress(false);
-                //todo find out what to do here
-            }
-        });
+    public void insertUserToDatabase(User user) {
+        Log.i("Login", "user login request successful");
+        UserTable userTable = new UserTable();
+        userTable.setUserName(user.getUserName());
+        userTable.setUserToken(user.getUserToken());
+
+        Completable.fromAction(() -> userDB.userDao().addUser(userTable))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                        new CompletableObserver() {
+                            @Override
+                            public void onSubscribe(Disposable d) {
+
+                            }
+
+                            @Override
+                            public void onComplete() {
+                                Log.i("Database", "Saved user to database");
+                                showProgress(false);
+                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                startActivity(intent);
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e("Database", e.getMessage());
+                            }
+                        }
+                );
+
     }
 
 
-//    /**
-//     * Represents an asynchronous login/registration task used to authenticate
-//     * the user.
-//     */
-//    public class UserLoginTask extends AsyncTask<Void, Void, String> {
-//
-//        private final String mEmail;
-//        private final String mPassword;
-//
-//        UserLoginTask(String email, String password) {
-//            mEmail = email;
-//            mPassword = password;
-//        }
-//
-//        @Override
-//        protected String doInBackground(Void... params) {
-//
-//            URL url;
-//            try {
-//                String stringUrl = String.format("https://%s/userLogin"
-//                        , SYSTEM_DOMAIN);
-//                url = new URL(stringUrl);
-//
-//                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-//                conn.setRequestMethod("POST");
-//                conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-//                conn.setRequestProperty("Accept", "application/json");
-//                conn.setDoOutput(true);
-//                conn.setDoInput(true);
-//
-//                JSONObject jsonParam = new JSONObject();
-//                jsonParam.put("userEmail", mEmail);
-//                jsonParam.put("password", mPassword);
-//
-//                Log.i("JSON", jsonParam.toString());
-//                DataOutputStream os = new DataOutputStream(conn.getOutputStream());
-//                os.writeBytes(jsonParam.toString());
-//
-//                os.flush();
-//                os.close();
-//
-//                String text;
-//
-//
-//                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-//                StringBuilder sb = new StringBuilder();
-//                String line;
-//
-//                // Read Server Response
-//                while ((line = reader.readLine()) != null) {
-//                    // Append server response in string
-//                    sb.append(line).append("\n");
-//                }
-//                reader.close();
-//                text = sb.toString();
-//
-//                User user = new User().decode(text);
-//                Log.i("REPLY", text);
-//                switch (user.getAction()) {
-//                    case "LoginSuccessful":
-////                        SharedPreferences.Editor editor = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).edit();
-////                        editor.putString(USER_NAME, user.getUserName());
-////                        editor.putString(USER_TOKEN, user.getUserToken());
-////                        editor.apply();
-//                        UserTable userTable = new UserTable();
-//                        userTable.setUserName(user.getUserName());
-//                        userTable.setUserToken(user.getUserToken());
-//                        userDB.userDao().addUser(userTable);
-//
-//
-//                    case "IncorrectLoginCredentials":
-//                    case "CommunicationError":
-//                    case "DataMissing":
-//                        return user.getAction();
-//                }
-//                conn.disconnect();
-//
-//            } catch (MalformedURLException e) {
-//                e.printStackTrace();
-//            } catch (ProtocolException e) {
-//                e.printStackTrace();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            } catch (JSONException e) {
-//                e.printStackTrace();
-//            }
-//            return "UnknownError";
-//        }
-//
-//        @Override
-//        protected void onPostExecute(final String success) {
-//            mAuthTask = null;
-//            showProgress(false);
-//            switch (success) {
-//                case "LoginSuccessful":
-//                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-//                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//                    startActivity(intent);
-//
-//                    break;
-//                case "IncorrectLoginCredentials":
-//                    mPasswordView.setError(getString(R.string.incorrect_credentials));
-//                    mPasswordView.requestFocus();
-//                    break;
-//                case "CommunicationError":
-//                    Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-//                            , Toast.LENGTH_LONG).show();
-//                    break;
-//                case "DataMissing":
-//                    Toast.makeText(getApplicationContext(), "Check your text fields and try again"
-//                            , Toast.LENGTH_LONG).show();
-//                    break;
-//                case "UnknownError":
-//                    Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-//                            , Toast.LENGTH_LONG).show();
-//                    break;
-//            }
-//        }
-//
-//        @Override
-//        protected void onCancelled() {
-//            mAuthTask = null;
-//            showProgress(false);
-//        }
-//    }
+    public void loginResponse(User user) {
+        switch (user.getAction()) {
+            case "LoginSuccessful":
+                insertUserToDatabase(user);
+                break;
+            case "IncorrectLoginCredentials":
+                Log.i("Login", "incorrect credentials");
+                mPasswordView.setError(getString(R.string.incorrect_credentials));
+                mPasswordView.requestFocus();
+                break;
+            case "CommunicationError":
+                Log.i("Login", "communication error");
+                Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "DataMissing":
+                Log.i("Login", "data missing");
+                Toast.makeText(getApplicationContext(), "Check your text fields and try again"
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "UnknownError":
+                Log.i("Login", "unknown error");
+                Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
+                        , Toast.LENGTH_LONG).show();
+                break;
+        }
+    }
 }
 

@@ -37,6 +37,8 @@ import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.ConstantValues;
 import com.matthewbulat.espiot.Objects.User;
+import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
+import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -52,12 +54,23 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 import static android.Manifest.permission.READ_CONTACTS;
 
 /**
  * A login screen that offers login via email/password.
  */
-public class RegisterActivity extends AppCompatActivity implements LoaderCallbacks<Cursor>,ConstantValues {
+public class RegisterActivity extends AppCompatActivity implements LoaderCallbacks<Cursor>, ConstantValues {
 
     /**
      * Id to identity READ_CONTACTS permission request.
@@ -67,7 +80,8 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
-    private UserLoginTask mAuthTask = null;
+    //todo test the retrofit implementation and remove the old async tasks
+    //private UserLoginTask mAuthTask = null;
 
     // UI references.
     private AutoCompleteTextView mEmailView;
@@ -76,13 +90,17 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
     private View mProgressView;
     private View mLoginFormView;
     private UserDB userDB;
+    private IoTAPI ioTAPI;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ioTAPI = ApiUtils.getIoTService();
         setContentView(R.layout.activity_register);
         // Set up the login form.
-        userDB = Room.databaseBuilder(getApplicationContext(),UserDB.class,"userdb").build();
+        //todo include database call in rxjava library
+        userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").build();
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email_register);
         populateAutoComplete();
 
@@ -163,9 +181,9 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
      * errors are presented and no actual login attempt is made.
      */
     private void attemptLogin() {
-        if (mAuthTask != null) {
-            return;
-        }
+//        if (mAuthTask != null) {
+//            return;
+//        }
 
         // Reset errors.
         mEmailView.setError(null);
@@ -211,8 +229,11 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(email, password, userName);
-            mAuthTask.execute((Void) null);
+            User user = new User();
+            user.setUserName(userName);
+            user.setPassword(password);
+            user.setUserEmail(email);
+            registerWithSystem(user);
         }
     }
 
@@ -316,130 +337,93 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
         int IS_PRIMARY = 1;
     }
 
-    public class UserLoginTask extends AsyncTask<Void, Void, String> {
+    public void registerWithSystem(User user) {
+        compositeDisposable.add(ioTAPI.userRegister(user)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<User>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
 
-        private final String mEmail;
-        private final String mPassword;
-        private final String mUsername;
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
 
-        UserLoginTask(String email, String password, String username) {
-            mEmail = email;
-            mPassword = password;
-            mUsername = username;
+                                   @Override
+                                   public void onNext(User value) {
+                                       registerReplyProcessing(value);
+                                       Log.i("Register", "register request successful");
+                                   }
+                               }
+                )
+        );
+    }
 
-        }
+    public void insertUserToDatabase(User user) {
+        UserTable userTable = new UserTable();
+        userTable.setUserName(user.getUserName());
+        userTable.setUserToken(user.getUserToken());
 
-        @Override
-        protected String doInBackground(Void... params) {
-            URL url;
-            try {
-                String stringUrl = String.format("https://%s/userRegister"
-                        ,SYSTEM_DOMAIN);
-                url = new URL(stringUrl);
+        Completable.fromAction(() -> userDB.userDao().addUser(userTable))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                        new CompletableObserver() {
+                            @Override
+                            public void onSubscribe(Disposable d) {
 
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setDoOutput(true);
-                conn.setDoInput(true);
+                            }
 
-                JSONObject jsonParam = new JSONObject();
-                jsonParam.put("userEmail", mEmail);
-                jsonParam.put("password", mPassword);
-                jsonParam.put("userName", mUsername);
+                            @Override
+                            public void onComplete() {
+                                Log.i("Database", "Saved user to database");
+                                Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                startActivity(intent);
+                            }
 
-                Log.i("JSON", jsonParam.toString());
-                DataOutputStream os = new DataOutputStream(conn.getOutputStream());
-                os.writeBytes(jsonParam.toString());
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e("Database", e.getMessage());
+                            }
+                        }
+                );
 
-                os.flush();
-                os.close();
-
-                String text;
-
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-
-                // Read Server Response
-                while ((line = reader.readLine()) != null) {
-                    // Append server response in string
-                    sb.append(line).append("\n");
-                }
-                reader.close();
-                text = sb.toString();
-                conn.disconnect();
-                User user = new User().decode(text);
-                Log.i("REPLY", text);
-                switch (user.getAction()) {
-                    case "RegistrationSuccessful":
-                        UserTable userTable = new UserTable();
-                        userTable.setUserName(user.getUserName());
-                        userTable.setUserToken(user.getUserToken());
-                        userDB.userDao().addUser(userTable);
-
-                        //new UserCredentials(getApplicationContext()).setCredentials(user.getUserName(),user.getUserToken());
-                        return user.getAction();
-                    default:
-                        return user.getAction();
-                }
+    }
 
 
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (ProtocolException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-            return "UnknownError";
-        }
-
-        @Override
-        protected void onPostExecute(final String success) {
-            mAuthTask = null;
-            showProgress(false);
-
-            switch (success) {
-                case "RegistrationSuccessful":
-                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                    startActivity(intent);
-                    break;
-                case "EmailAddressAlreadyUsed":
-                    mEmailView.setError(getString(R.string.error_email_address_registered));
-                    break;
-                case "UserNameAlreadyUsed":
-                    mUserNameView.setError(getString(R.string.error_username_used));
-                    mUserNameView.requestFocus();
-                    break;
-                case "DatabaseError":
-                    Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "CommunicationError":
-                    Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "DataMissing":
-                    Toast.makeText(getApplicationContext(), "Check your text fields and try again"
-                            , Toast.LENGTH_LONG).show();
-                    break;
-                case "UnknownError":
-                    Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
-                            , Toast.LENGTH_LONG).show();
-                    break;
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            mAuthTask = null;
-            showProgress(false);
+    public void registerReplyProcessing(User user) {
+        showProgress(false);
+        switch (user.getAction()) {
+            case "RegistrationSuccessful":
+                insertUserToDatabase(user);
+                break;
+            case "EmailAddressAlreadyUsed":
+                mEmailView.setError(getString(R.string.error_email_address_registered));
+                break;
+            case "UserNameAlreadyUsed":
+                mUserNameView.setError(getString(R.string.error_username_used));
+                mUserNameView.requestFocus();
+                break;
+            case "DatabaseError":
+                Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "CommunicationError":
+                Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "DataMissing":
+                Toast.makeText(getApplicationContext(), "Check your text fields and try again"
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "UnknownError":
+                Toast.makeText(getApplicationContext(), "Something went wrong try again in few moments..."
+                        , Toast.LENGTH_LONG).show();
+                break;
         }
     }
 }

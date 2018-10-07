@@ -5,7 +5,7 @@ import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 public class ApiUtils {
 
 
-    public static final String BASE_URL = "https://matthewbulat.com:80";
+    private static final String BASE_URL = "https://matthewbulat.com:80";
 
     public static IoTAPI getIoTService() {
         return APIClient.getClient(BASE_URL).create(IoTAPI.class);

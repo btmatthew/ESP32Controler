@@ -123,8 +123,12 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onResume() {
-        swipeContainer.setRefreshing(true);
-        loadDeviceList(userTables.get(0).getUserName(),userTables.get(0).getUserToken(),"requestDevicesList","refresh");
+        if(swipeContainer != null){
+            swipeContainer.setRefreshing(true);
+            loadDeviceList(userTables.get(0).getUserName(),userTables.get(0).getUserToken(),"requestDevicesList","refresh");
+        }
+
+
         super.onResume();
     }
 
