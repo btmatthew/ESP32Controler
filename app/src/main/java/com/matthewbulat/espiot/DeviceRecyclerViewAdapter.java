@@ -16,26 +16,33 @@ import android.widget.Toast;
 import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
 import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 
 public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecyclerViewAdapter.ViewHolder> {
     private ArrayList<Message> deviceList;
     private Context mContext;
     private boolean itemSelected;
     private IoTAPI ioTAPI;
+    private List<UserTable> userTables;
 
-    public DeviceRecyclerViewAdapter(ArrayList<Message> deviceList, Context mContext) {
+    DeviceRecyclerViewAdapter(ArrayList<Message> deviceList, Context mContext,List<UserTable> userTables) {
         this.deviceList = deviceList;
         this.mContext = mContext;
         this.ioTAPI = ApiUtils.getIoTService();
+        this.userTables = userTables;
     }
 
     @Override
@@ -47,31 +54,34 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
+        Message message = deviceList.get(position);
         switch (deviceList.get(position).getDeviceType()) {
             case "Lamp":
                 holder.deviceType.setImageResource(R.drawable.ic_desk_lamp);
+                message.setAction("lampstatus");
                 break;
+            case "IrRemote":
+                holder.deviceType.setImageResource(R.drawable.ic_baseline_settings_remote_24px);
+                message.setAction("deviceStatus");
+                break;
+                default:
+                    //todo include default icon
         }
         holder.deviceDescription.setText(deviceList.get(position).getDeviceDescription());
-        holder.parentLayout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        holder.parentLayout.setOnClickListener((view) -> {
                 if(!itemSelected) {
-                    UserDB userDB = Room.databaseBuilder(mContext, UserDB.class, "userdb").allowMainThreadQueries().build();
-                    UserTable user = userDB.userDao().getUser().get(0);
-
-                    deviceAction(deviceList.get(position),user.getUserName(),user.getUserToken(),"lampstatus");
+                    getDeviceStatus(message,userTables.get(0).returnUserObject());
                 }
             }
-        });
+        );
     }
 
-    public void clear() {
+    void clear() {
         deviceList.clear();
         notifyDataSetChanged();
     }
 
-    public void addAll(List<Message> list) {
+    void addAll(List<Message> list) {
         deviceList.addAll(list);
         notifyDataSetChanged();
     }
@@ -82,12 +92,12 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         return deviceList.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder {
+    class ViewHolder extends RecyclerView.ViewHolder {
         ImageView deviceType;
         TextView deviceDescription;
         RelativeLayout parentLayout;
 
-        public ViewHolder(View itemView) {
+        ViewHolder(View itemView) {
             super(itemView);
 
             deviceType = itemView.findViewById(R.id.image);
@@ -96,48 +106,73 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         }
     }
 
-    public void deviceAction(final Message message, String userName, String userToken, String lampAction){
 
-        ioTAPI.lampActions(message.getDeviceID(),userName,userToken,lampAction).enqueue(new Callback<Message>() {
-            @Override
-            public void onResponse(Call<Message> call, Response<Message> response) {
 
-                if(response.isSuccessful()) {
+    private void getDeviceStatus(Message message, User user) {
+        CompositeDisposable compositeDisposable = new CompositeDisposable();
+        compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(),user.getUserName(),user.getUserToken(),message.getAction())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<Message>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
 
-                    System.out.println(response.body().getAction());
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
 
-                    switch (response.body().getAction()) {
-                        case "deviceNotConnectedToSystem":
-                            Toast.makeText(mContext, "Your ESP device is disconnected from the network."
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                        case "communicationError":
-                            Toast.makeText(mContext, "Internal network error, please try again in few moments."
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                        case "IncorrectCredentials":
-                            Toast.makeText(mContext, "Please try again in few moments."
-                                    , Toast.LENGTH_LONG).show();
-                            break;
-                        case "lampstatus":
+                                   @Override
+                                   public void onNext(Message value) {
+                                       switch(message.getDeviceType()){
+                                           case "Lamp":
+                                               message.setLampStatus(value.getLampStatus());
+                                               responseAction(message,user);
+                                               break;
+                                           case "IrRemote":
+                                               message.setRemoteStatus(value.returnRemoteStatus());
+                                               responseAction(message,user);
+                                               break;
+                                           default:
+                                               //todo include default icon
+                                       }
+                                       Log.i("DeviceStatus", "Device status request successful");
+                                   }
+                               }
+                )
+        );
+    }
 
-                            Intent intent = new Intent(mContext, DeviceActions.class);
-                            response.body().setDeviceID(message.getDeviceID());
-                            response.body().setDeviceDescription(message.getDeviceDescription());
-                            Log.i("returnMessage",response.body().encode());
-                            intent.putExtra("device", response.body());
-                            mContext.startActivity(intent);
-                            break;
-                    }
-                }else{
-                    //todo test this
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Message> call, Throwable t) {
-
-            }
-        });
+    private void responseAction(Message message,User user){
+        switch (message.getAction()) {
+            case "deviceNotConnectedToSystem":
+                Toast.makeText(mContext, "Your ESP device is disconnected from the network."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "communicationError":
+                Toast.makeText(mContext, "Internal network error, please try again in few moments."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "IncorrectCredentials":
+                Toast.makeText(mContext, "Please try again in few moments."
+                        , Toast.LENGTH_LONG).show();
+                break;
+            case "lampstatus":
+                Intent intent = new Intent(mContext, DeviceActions.class);
+                message.setDeviceID(message.getDeviceID());
+                message.setDeviceDescription(message.getDeviceDescription());
+                Log.i("returnMessage",message.encode());
+                intent.putExtra("device", message);
+                intent.putExtra("user",user);
+                mContext.startActivity(intent);
+                break;
+            case "deviceStatus":
+                Intent remoteIntent = new Intent(mContext,RemoteActivity.class);
+                mContext.startActivity(remoteIntent);
+                //todo implement the multi tab activity for remote control, allow independent control for both the fan and tv
+                break;
+        }
     }
 }

@@ -8,6 +8,8 @@ import android.arch.persistence.room.Query;
 
 import java.util.List;
 
+import io.reactivex.Single;
+
 @Dao
 public interface UserDao {
 
@@ -15,5 +17,5 @@ public interface UserDao {
     void addUser(UserTable userTable);
 
     @Query("select * from users Limit 1")
-    List<UserTable> getUser();
+    Single<List<UserTable>> getUser();
 }

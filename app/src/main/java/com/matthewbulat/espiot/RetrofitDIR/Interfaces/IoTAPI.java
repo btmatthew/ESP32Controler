@@ -4,7 +4,6 @@ import com.matthewbulat.espiot.Objects.Message;
 import com.matthewbulat.espiot.Objects.User;
 
 import io.reactivex.Observable;
-import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
@@ -14,23 +13,32 @@ import retrofit2.http.Query;
 public interface IoTAPI {
 
     @GET("/lampAction")
-    Call<Message> lampActions(@Query("deviceId") String deviceId,
-                              @Query("userName") String userName,
-                              @Query("userToken") String userToken,
-                              @Query("lampAction") String lampAction);
+    Observable<Message> lampActions(
+            @Query("deviceId") String deviceId,
+            @Query("userName") String userName,
+            @Query("userToken") String userToken,
+            @Query("lampAction") String lampAction);
 
     @GET("/lampAction")
-    Call<Message> deviceList(@Query("userName") String userName,
-                    @Query("userToken") String userToken,
-                    @Query("lampAction") String lampAction);
+    Observable<Message> deviceList(
+            @Query("userName") String userName,
+            @Query("userToken") String userToken,
+            @Query("lampAction") String lampAction);
 
     @GET("/lampAction")
-    Call<Message> updateDeviceDescription(
+    Observable<Message> updateDeviceDescription(
             @Query("deviceId") String deviceId,
             @Query("userName") String userName,
             @Query("userToken") String userToken,
             @Query("lampAction") String lampAction,
             @Query("newDeviceDescription") String newDeviceDescription);
+
+    @GET("/remoteAction")
+    Observable<Message> remoteAction(
+            @Query("deviceId") String deviceId,
+            @Query("userName") String userName,
+            @Query("userToken") String userToken,
+            @Query("remoteOption") int fanOption);
 
     @POST("/userLogin")
     @Headers("Content-Type: application/json")

@@ -28,15 +28,42 @@ public class Message implements Parcelable {
     @SerializedName("lampStatus")
     @Expose
     private String lampStatus;
+    @SerializedName("remoteOption")
+    @Expose
+    private int remoteOption;
+    @SerializedName("fanStatus")
+    @Expose
+    private boolean fanStatus;
+    @SerializedName("fanSpeed")
+    @Expose
+    private int fanSpeed;
+    @SerializedName("fanMode")
+    @Expose
+    private int fanMode;
+    @SerializedName("rotation")
+    @Expose
+    private boolean rotation;
+    @SerializedName("ion")
+    @Expose
+    private boolean ion;
+    @SerializedName("tvStatus")
+    @Expose
+    private boolean tvStatus;
+    @SerializedName("humidity")
+    @Expose
+    private float humidity;
+    @SerializedName("temperature")
+    @Expose
+    private float temperature;
 
     public Message() {
     }
 
-    protected Message(Parcel in) {
-        deviceDescription = in.readString();
-        deviceID = in.readString();
-        deviceType = in.readString();
-        lampStatus = in.readString();
+    private Message(Parcel in) {
+        this.deviceDescription = in.readString();
+        this.deviceID = in.readString();
+        this.deviceType = in.readString();
+        this.lampStatus = in.readString();
     }
 
     public static final Creator<Message> CREATOR = new Creator<Message>() {
@@ -121,4 +148,97 @@ public class Message implements Parcelable {
     public void setAction(String action) {
         this.action = action;
     }
+
+    public boolean isFanStatus() {
+        return fanStatus;
+    }
+
+    public void setFanStatus(boolean fanStatus) {
+        this.fanStatus = fanStatus;
+    }
+
+    public int getFanSpeed() {
+        return fanSpeed;
+    }
+
+    public void setFanSpeed(int fanSpeed) {
+        this.fanSpeed = fanSpeed;
+    }
+
+    public int getFanMode() {
+        return fanMode;
+    }
+
+    public void setFanMode(int fanMode) {
+        this.fanMode = fanMode;
+    }
+
+    public boolean isRotation() {
+        return rotation;
+    }
+
+    public void setRotation(boolean rotation) {
+        this.rotation = rotation;
+    }
+
+    public boolean isIon() {
+        return ion;
+    }
+
+    public void setIon(boolean ion) {
+        this.ion = ion;
+    }
+
+    public boolean isTvStatus() {
+        return tvStatus;
+    }
+
+    public void setTvStatus(boolean tvStatus) {
+        this.tvStatus = tvStatus;
+    }
+
+    public int getRemoteOption() {
+        return remoteOption;
+    }
+
+    public void setRemoteOption(int remoteOption) {
+        this.remoteOption = remoteOption;
+    }
+
+    public float getHumidity() {
+        return humidity;
+    }
+
+    public void setHumidity(float humidity) {
+        this.humidity = humidity;
+    }
+
+    public float getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(float temperature) {
+        this.temperature = temperature;
+    }
+
+    public Message returnRemoteStatus(){
+        Message message = new Message();
+        message.setFanMode(getFanMode());
+        message.setFanSpeed(getFanSpeed());
+        message.setFanStatus(isFanStatus());
+        message.setTvStatus(isTvStatus());
+        message.setRotation(isRotation());
+        message.setIon(isIon());
+        return message;
+    }
+
+    public void setRemoteStatus(Message message){
+        setFanMode(message.getFanMode());
+        setFanSpeed(message.getFanSpeed());
+        setFanStatus(message.isFanStatus());
+        setTvStatus(message.isTvStatus());
+        setRotation(message.isRotation());
+        setIon(message.isIon());
+    }
+
 }

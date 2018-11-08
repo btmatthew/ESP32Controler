@@ -30,11 +30,22 @@
     <string name="removedevice">Remove Device</string>
     <string name="remove_device_dialog_message">Are you sure you want to remove device?</string>
     <string name="remove_device_dialog_title">Device removal</string>
-    <string name="ok">Ok</string>
+    <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
     <string name="deviceInformation">Device Information</string>
     <string name="device_information_title">Device Infromation</string>
     <string name="updatename">Update Device Name</string>
+    <string name="title_activity_remote">RemoteActivity</string>
+    <string name="tab_text_1">Tab 1</string>
+    <string name="tab_text_2">Tab 2</string>
+    <string name="tab_text_3">Tab 3</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="textview">TextView</string>
+    <string name="TV">TV</string>
+    <string name="channel">Channel</string>
+    <string name="volume">Volume</string>
 
 </resources>

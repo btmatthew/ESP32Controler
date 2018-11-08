@@ -1,8 +1,5 @@
 package com.matthewbulat.espiot;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.annotation.TargetApi;
 import android.arch.persistence.room.Room;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,12 +8,10 @@ import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -28,7 +23,6 @@ import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.ConstantValues;
 import com.matthewbulat.espiot.Objects.User;
-import com.matthewbulat.espiot.Objects.UserCredentials;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,19 +38,21 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RegisterNewDevice extends AppCompatActivity implements ConstantValues{
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+
+public class RegisterNewDevice extends AppCompatActivity implements ConstantValues {
     private EditText networkName;
     private EditText networkPassword;
     private EditText deviceDescription;
     private ListView networkListView;
-    private Button registerDeviceButton;
     private WifiManager wifiManager;
-    private List<ScanResult> wifiList;
-    private ArrayList<String> networkList;
     private WifiReceiver wifiReceiver;
     private RegisterDeviceTask registerDeviceTask;
     private View mProgressView;
-    private UserDB userDB;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,89 +64,95 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
         networkPassword = findViewById(R.id.networkPasswordEditText);
         deviceDescription = findViewById(R.id.deviceDescriptionEditText);
         networkListView = findViewById(R.id.networkListView);
-        registerDeviceButton = findViewById(R.id.registerDeviceButton);
+        Button registerDeviceButton = findViewById(R.id.registerDeviceButton);
         mProgressView = findViewById(R.id.registrationProgress);
-
-        userDB = Room.databaseBuilder(getApplicationContext(),UserDB.class,"userdb").allowMainThreadQueries().build();
-
-
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         wifiReceiver = new WifiReceiver();
         registerReceiver(wifiReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
 
-        networkName.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean b) {
-                if (b) {
-                    wifiManager.startScan();
-                    showListView(true);
-                } else {
-                    showListView(false);
-                }
+        networkName.setOnFocusChangeListener((view, b) -> {
+            if (b) {
+                wifiManager.startScan();
+                showListView(true);
+            } else {
+                showListView(false);
             }
         });
-        networkListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String selectedItem = (String) adapterView.getItemAtPosition(i);
-                networkName.setText(selectedItem);
-                networkPassword.requestFocus();
-            }
+        networkListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            String selectedItem = (String) adapterView.getItemAtPosition(i);
+            networkName.setText(selectedItem);
+            networkPassword.requestFocus();
         });
 
         Intent intent = getIntent();
         String deviceName = String.format("Registering %s", intent.getStringExtra("deviceName"));
         deviceNameTextView.setText(deviceName);
 
-        registerDeviceButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        registerDeviceButton.setOnClickListener(view -> {
 
-                if(networkName.getText().toString().isEmpty() ||
-                        networkName.getText().toString().equals("")){
-                    networkName.setError(getString(R.string.error_field_required));
-                    networkName.requestFocus();
-                }
-                if(networkPassword.getText().toString().isEmpty() ||
-                        networkPassword.getText().toString().equals("")){
-                    networkPassword.setError(getString(R.string.error_field_required));
-                    networkPassword.requestFocus();
-                }
+            if (networkName.getText().toString().isEmpty() ||
+                    networkName.getText().toString().equals("")) {
+                networkName.setError(getString(R.string.error_field_required));
+                networkName.requestFocus();
+            }
+            if (networkPassword.getText().toString().isEmpty() ||
+                    networkPassword.getText().toString().equals("")) {
+                networkPassword.setError(getString(R.string.error_field_required));
+                networkPassword.requestFocus();
+            }
 
-                if(deviceDescription.getText().toString().isEmpty() ||
-                        deviceDescription.getText().toString().equals("")){
-                    deviceDescription.setError(getString(R.string.error_field_required));
-                    deviceDescription.requestFocus();
-                }
+            if (deviceDescription.getText().toString().isEmpty() ||
+                    deviceDescription.getText().toString().equals("")) {
+                deviceDescription.setError(getString(R.string.error_field_required));
+                deviceDescription.requestFocus();
+            }
 
-                if (!networkName.getText().toString().isEmpty() ||
-                        !networkName.getText().toString().equals("") ||
-                        !networkPassword.getText().toString().isEmpty() ||
-                        !networkPassword.getText().toString().equals("") ||
-                        !deviceDescription.getText().toString().isEmpty() ||
-                        !deviceDescription.getText().toString().equals("")) {
+            if (!networkName.getText().toString().isEmpty() ||
+                    !networkName.getText().toString().equals("") ||
+                    !networkPassword.getText().toString().isEmpty() ||
+                    !networkPassword.getText().toString().equals("") ||
+                    !deviceDescription.getText().toString().isEmpty() ||
+                    !deviceDescription.getText().toString().equals("")) {
 
-
-                    UserCredentials userCredentials = new UserCredentials(getApplicationContext());
-                    userCredentials.retriveCredentials();
-                    List<UserTable> userTables = userDB.userDao().getUser();
-
-                    String userName = userTables.get(0).getUserName();
-                    String userToken = userTables.get(0).getUserToken();
-                    showProgress(true);
-                    registerDeviceTask = new RegisterDeviceTask(networkName.getText().toString(),
-                            networkPassword.getText().toString(),
-                            userName,userToken,deviceDescription.getText().toString());
-                    registerDeviceTask.execute((Void) null);
-
-                }else{
-                    Toast.makeText(getApplicationContext(), "Please make sure that all the fields are filled in."
-                            , Toast.LENGTH_LONG).show();
-                }
+                getUserDetails();
+            } else {
+                Toast.makeText(getApplicationContext(), "Please make sure that all the fields are filled in."
+                        , Toast.LENGTH_LONG).show();
             }
         });
 
     }
+
+    private void getUserDetails() {
+        UserDB userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").build();
+        Single<List<UserTable>> single = userDB.userDao().getUser();
+        single.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<List<UserTable>>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        // add it to a CompositeDisposable
+                    }
+
+                    @Override
+                    public void onSuccess(List<UserTable> users) {
+                        //todo replace this asyntask with rxjava
+                        String userName = users.get(0).getUserName();
+                        String userToken = users.get(0).getUserToken();
+                        showProgress(true);
+                        registerDeviceTask = new RegisterDeviceTask(networkName.getText().toString(),
+                                networkPassword.getText().toString(),
+                                userName, userToken, deviceDescription.getText().toString());
+                        registerDeviceTask.execute((Void) null);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.e("Database", e.getMessage());
+                    }
+                });
+    }
+
 
     @Override
     protected void onResume() {
@@ -164,47 +166,19 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
         unregisterReceiver(wifiReceiver);
     }
 
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
+
     private void showListView(final boolean show) {
-        // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
-        // for very easy animations. If available, use these APIs to fade-in
-        // the progress spinner.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
-            networkListView.setVisibility(show ? View.VISIBLE : View.GONE);
-        } else {
-            // The ViewPropertyAnimator APIs are not available, so simply show
-            // and hide the relevant UI components.
-            networkListView.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
+        networkListView.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     /**
      * Shows the progress UI and hides the login form.
      */
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
     private void showProgress(final boolean show) {
-        // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
-        // for very easy animations. If available, use these APIs to fade-in
-        // the progress spinner.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
-            int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
-
-            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mProgressView.animate().setDuration(shortAnimTime).alpha(
-                    show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-                }
-            });
-        } else {
-            // The ViewPropertyAnimator APIs are not available, so simply show
-            // and hide the relevant UI components.
-            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
+        mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
-
+    //todo convert this into retorfit
     public class RegisterDeviceTask extends AsyncTask<Void, Void, User> {
 
         private final String networkName;
@@ -224,12 +198,12 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
 
         @Override
         protected User doInBackground(Void... params) {
-            User user=null;
+            User user = null;
             String text = "unknownError";
             URL url;
             try {
                 String stringUrl = String.format("http://%s/wifiSetUP"
-                        ,ESP_ADDRESS);
+                        , ESP_ADDRESS);
 
                 url = new URL(stringUrl);
 
@@ -270,16 +244,10 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
                 conn.disconnect();
                 return user;
 
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (ProtocolException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (IOException | JSONException e) {
                 e.printStackTrace();
             }
-            if(user==null){
+            if (user == null) {
                 user = new User();
                 user.setAction("UnknownError");
             }
@@ -316,12 +284,12 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
                     break;
                 case "UnknownError":
                     Toast.makeText(getApplicationContext(), "There is a problem with our system," +
-                            " please wait few moments and try again."
+                                    " please wait few moments and try again."
                             , Toast.LENGTH_LONG).show();
                     finish();
                     break;
-                    default:
-                        Log.i("onPostExecute", "default called");
+                default:
+                    Log.i("onPostExecute", "default called");
             }
             registerDeviceTask = null;
             showProgress(false);
@@ -340,10 +308,10 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            wifiList = wifiManager.getScanResults();
-            networkList = new ArrayList<>();
+            List<ScanResult> wifiList = wifiManager.getScanResults();
+            ArrayList<String> networkList = new ArrayList<>();
             for (ScanResult result : wifiList) {
-                if(frequencyToChannel(String.valueOf(result.frequency)).contains("2.4ghz")){
+                if (frequencyToChannel(String.valueOf(result.frequency)).contains("2.4ghz")) {
                     networkList.add(result.SSID);
                 }
             }
@@ -360,120 +328,120 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
     }
 
     String frequencyToChannel(String frequency) {
-        switch(frequency) {
-            case "2412" :
+        switch (frequency) {
+            case "2412":
                 return "ch 1 - 2.4ghz";
-            case "2417" :
+            case "2417":
                 return "ch 2 - 2.4ghz";
-            case "2422" :
+            case "2422":
                 return "ch 3 - 2.4ghz";
-            case "2427" :
+            case "2427":
                 return "ch 4 - 2.4ghz";
-            case "2432" :
+            case "2432":
                 return "ch 5 - 2.4ghz";
-            case "2437" :
+            case "2437":
                 return "ch 6 - 2.4ghz";
-            case "2442" :
+            case "2442":
                 return "ch 7 - 2.4ghz";
-            case "2447" :
+            case "2447":
                 return "ch 8 - 2.4ghz";
-            case "2452" :
+            case "2452":
                 return "ch 9 - 2.4ghz";
-            case "2457" :
+            case "2457":
                 return "ch 10 - 2.4ghz";
-            case "2462" :
+            case "2462":
                 return "ch 11 - 2.4ghz";
-            case "2467" :
+            case "2467":
                 return "ch 12 - 2.4ghz";
-            case "2472" :
+            case "2472":
                 return "ch 13 - 2.4ghz";
-            case "2484" :
+            case "2484":
                 return "ch 14 - 2.4ghz";
-            case "5035" :
+            case "5035":
                 return "ch 7 - 5.0ghz";
-            case "5040" :
+            case "5040":
                 return "ch 8 - 5.0ghz";
-            case "5045" :
+            case "5045":
                 return "ch 9 - 5.0ghz";
-            case "5055" :
+            case "5055":
                 return "ch 11 - 5.0ghz";
-            case "5060" :
+            case "5060":
                 return "ch 12 - 5.0ghz";
-            case "5080" :
+            case "5080":
                 return "ch 16 - 5.0ghz";
-            case "5170" :
+            case "5170":
                 return "ch 34 - 5.0ghz";
-            case "5180" :
+            case "5180":
                 return "ch 36 - 5.0ghz";
-            case "5190" :
+            case "5190":
                 return "ch 38 - 5.0ghz";
-            case "5200" :
+            case "5200":
                 return "ch 40 - 5.0ghz";
-            case "5210" :
+            case "5210":
                 return "ch 42 - 5.0ghz";
-            case "5220" :
+            case "5220":
                 return "ch 44 - 5.0ghz";
-            case "5230" :
+            case "5230":
                 return "ch 46 - 5.0ghz";
-            case "5240" :
+            case "5240":
                 return "ch 48 - 5.0ghz";
-            case "5260" :
+            case "5260":
                 return "ch 52 - 5.0ghz";
-            case "5280" :
+            case "5280":
                 return "ch 56 - 5.0ghz";
-            case "5300" :
+            case "5300":
                 return "ch 60 - 5.0ghz";
-            case "5320" :
+            case "5320":
                 return "ch 64 - 5.0ghz";
-            case "5500" :
+            case "5500":
                 return "ch 100 - 5.0ghz";
-            case "5520" :
+            case "5520":
                 return "ch 104 - 5.0ghz";
-            case "5540" :
+            case "5540":
                 return "ch 108 - 5.0ghz";
-            case "5560" :
+            case "5560":
                 return "ch 112 - 5.0ghz";
-            case "5580" :
+            case "5580":
                 return "ch 116 - 5.0ghz";
-            case "5600" :
+            case "5600":
                 return "ch 120 - 5.0ghz";
-            case "5620" :
+            case "5620":
                 return "ch 124 - 5.0ghz";
-            case "5640" :
+            case "5640":
                 return "ch 128 - 5.0ghz";
-            case "5660" :
+            case "5660":
                 return "ch 132 - 5.0ghz";
-            case "5680" :
+            case "5680":
                 return "ch 136 - 5.0ghz";
-            case "5700" :
+            case "5700":
                 return "ch 140 - 5.0ghz";
-            case "5720" :
+            case "5720":
                 return "ch 144 - 5.0ghz";
-            case "5745" :
+            case "5745":
                 return "ch 149 - 5.0ghz";
-            case "5765" :
+            case "5765":
                 return "ch 153 - 5.0ghz";
-            case "5785" :
+            case "5785":
                 return "ch 157 - 5.0ghz";
-            case "5805" :
+            case "5805":
                 return "ch 161 - 5.0ghz";
-            case "5825" :
+            case "5825":
                 return "ch 165 - 5.0ghz";
-            case "4915" :
+            case "4915":
                 return "ch 183 - 5.0ghz";
-            case "4920" :
+            case "4920":
                 return "ch 184 - 5.0ghz";
-            case "4925" :
+            case "4925":
                 return "ch 185 - 5.0ghz";
-            case "4935" :
+            case "4935":
                 return "ch 187 - 5.0ghz";
-            case "4940" :
+            case "4940":
                 return "ch 188 - 5.0ghz";
-            case "4945" :
+            case "4945":
                 return "ch 189 - 5.0ghz";
-            case "4960" :
+            case "4960":
                 return "ch 192 - 5.0ghz";
-            case "4980" :
+            case "4980":
                 return "ch 196 - 5.0ghz";
             default:
                 return "No channel";

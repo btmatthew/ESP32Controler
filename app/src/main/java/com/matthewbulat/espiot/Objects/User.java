@@ -1,10 +1,13 @@
 package com.matthewbulat.espiot.Objects;
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
 
-public class User {
+public class User implements Parcelable {
 
     @SerializedName("action")
     @Expose
@@ -25,16 +28,22 @@ public class User {
     public User() {
     }
 
-//    public  User(String userEmail,String password){
-//        this.userEmail=userEmail;
-//        this.password=password;
-//    }
-//
-//    public  User(String userEmail,String password,String userName){
-//        this.userEmail=userEmail;
-//        this.password=password;
-//        this.userName=userName;
-//    }
+    private User(Parcel in) {
+        userName=in.readString();
+        userToken=in.readString();
+    }
+
+    public static final Creator<User> CREATOR = new Creator<User>() {
+        @Override
+        public User createFromParcel(Parcel in) {
+            return new User(in);
+        }
+
+        @Override
+        public User[] newArray(int size) {
+            return new User[size];
+        }
+    };
 
     public String getUserEmail() {
         return userEmail;
@@ -85,4 +94,14 @@ public class User {
     }
 
 
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel parcel, int i) {
+        parcel.writeString(userName);
+        parcel.writeString(userToken);
+    }
 }

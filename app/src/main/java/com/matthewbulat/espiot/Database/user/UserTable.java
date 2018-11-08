@@ -5,6 +5,8 @@ import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 import android.support.annotation.NonNull;
 
+import com.matthewbulat.espiot.Objects.User;
+
 @Entity(tableName = "users")
 public class UserTable {
 
@@ -30,5 +32,12 @@ public class UserTable {
 
     public void setUserToken(String userToken) {
         this.userToken = userToken;
+    }
+
+    public User returnUserObject(){
+        User user = new User();
+        user.setUserName(this.userName);
+        user.setUserToken(this.userToken);
+        return user;
     }
 }
