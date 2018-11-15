@@ -145,7 +145,7 @@ public class FanRemoteControl extends Fragment {
                                    public void onNext(Message value) {
                                        //finishAPIAction(value);
                                        Log.i("return message",value.encode());
-                                       Log.i("Device Action", "Device action request successful");
+                                       Log.i("Device Action", "Device action request successful ");
                                    }
                                }
                 )
