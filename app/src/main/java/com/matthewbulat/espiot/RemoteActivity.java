@@ -20,43 +20,34 @@ import android.view.ViewGroup;
 
 import android.widget.TextView;
 
+import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.fragments.FanRemoteControl;
 import com.matthewbulat.espiot.fragments.TVRemoteControl;
 
 public class RemoteActivity extends AppCompatActivity implements TVRemoteControl.OnFragmentInteractionListener, FanRemoteControl.OnFragmentInteractionListener {
 
-    /**
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
-     * fragments for each of the sections. We use a
-     * {@link FragmentPagerAdapter} derivative, which will keep every
-     * loaded fragment in memory. If this becomes too memory intensive, it
-     * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
-     */
-    private SectionsPagerAdapter mSectionsPagerAdapter;
-
-    /**
-     * The {@link ViewPager} that will host the section contents.
-     */
-    private ViewPager mViewPager;
+    private Message device;
+    private User user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_remote);
+        device = getIntent().getParcelableExtra("device");
+        user = getIntent().getParcelableExtra("user");
 
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the activity.
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        SectionsPagerAdapter mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
-        // Set up the ViewPager with the sections adapter.
-        mViewPager = (ViewPager) findViewById(R.id.container);
+        ViewPager mViewPager = findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
-        TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
+        TabLayout tabLayout = findViewById(R.id.tabs);
 
         mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
         tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));
@@ -106,9 +97,9 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
 
             switch (position) {
                 case 0:
-                    return TVRemoteControl.newInstance();
+                    return TVRemoteControl.newInstance(device, user);
                 case 1:
-                    return FanRemoteControl.newInstance();
+                    return FanRemoteControl.newInstance(device, user);
             }
             // getItem is called to instantiate the fragment for the given page.
             //todo return default fragment

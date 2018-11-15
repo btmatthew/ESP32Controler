@@ -4,11 +4,25 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+import android.widget.ToggleButton;
 
+import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.R;
+import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
+import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 
 
 /**
@@ -20,14 +34,14 @@ import com.matthewbulat.espiot.R;
  * create an instance of this fragment.
  */
 public class TVRemoteControl extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
+    private static final String USER = "user";
+    private static final String MESSAGE = "device";
+
+    private IoTAPI ioTAPI;
+    private User user;
+    private Message device;
 
     private OnFragmentInteractionListener mListener;
 
@@ -35,21 +49,12 @@ public class TVRemoteControl extends Fragment {
         // Required empty public constructor
     }
 
-//    /**
-//     * Use this factory method to create a new instance of
-//     * this fragment using the provided parameters.
-//     *
-//     * @param param1 Parameter 1.
-//     * @param param2 Parameter 2.
-//     * @return A new instance of fragment TVRemoteControl.
-//     */
-    // TODO: Rename and change types and number of parameters
-    public static TVRemoteControl newInstance(/*String param1, String param2*/) {
+    public static TVRemoteControl newInstance(Message message, User user) {
         TVRemoteControl fragment = new TVRemoteControl();
-//        Bundle args = new Bundle();
-//        args.putString(ARG_PARAM1, param1);
-//        args.putString(ARG_PARAM2, param2);
-//        fragment.setArguments(args);
+        Bundle args = new Bundle();
+        args.putParcelable(USER,user);
+        args.putParcelable(MESSAGE, message);
+        fragment.setArguments(args);
         return fragment;
     }
 
@@ -57,19 +62,101 @@ public class TVRemoteControl extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            user = getArguments().getParcelable(USER);
+            device = getArguments().getParcelable(MESSAGE);
         }
+        ioTAPI = ApiUtils.getIoTService();
+
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_tvremote_control, container, false);
+        View v = inflater.inflate(R.layout.fragment_tvremote_control, container, false);
+        TextView deviceName = v.findViewById(R.id.tvRemoteDeviceDescription);
+        deviceName.setText(device.getDeviceDescription());
+        ToggleButton tvPower = v.findViewById(R.id.tvPower);
+        if (device.isTvStatus()) {
+            tvPower.setChecked(true);
+        } else {
+            tvPower.setChecked(false);
+        }
+        tvPower.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(6);
+            deviceAction(messageToDevice);
+
+        });
+
+        ImageButton channelUp = v.findViewById(R.id.channelUp);
+        ImageButton channelDown = v.findViewById(R.id.channelDown);
+        ImageButton volumeUp = v.findViewById(R.id.volumeUp);
+        ImageButton volumeDown = v.findViewById(R.id.volumeDown);
+
+        channelUp.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(9);
+            deviceAction(messageToDevice);
+        });
+
+        channelDown.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(10);
+            deviceAction(messageToDevice);
+        });
+
+        volumeUp.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(7);
+            deviceAction(messageToDevice);
+        });
+
+        volumeDown.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(8);
+            deviceAction(messageToDevice);
+        });
+
+        return v;
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
+
+
+    public void deviceAction(Message message) {
+
+        CompositeDisposable compositeDisposable = new CompositeDisposable();
+        compositeDisposable.add(ioTAPI.remoteAction(message.getAction(), message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getRemoteOption())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<Message>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
+
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
+
+                                   @Override
+                                   public void onNext(Message value) {
+                                       //finishAPIAction(value);
+                                       Log.i("return message",value.encode());
+                                       Log.i("Device Action", "Device action request successful");
+                                   }
+                               }
+                )
+        );
+    }
+
+
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
             mListener.onFragmentInteraction(uri);
@@ -81,9 +168,6 @@ public class TVRemoteControl extends Fragment {
         super.onAttach(context);
         if (context instanceof OnFragmentInteractionListener) {
             mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
         }
     }
 
@@ -104,7 +188,6 @@ public class TVRemoteControl extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
 }

@@ -4,11 +4,24 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
 
+import com.matthewbulat.espiot.Objects.Message;
+import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.R;
+import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
+import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 
 
 /**
@@ -22,12 +35,14 @@ import com.matthewbulat.espiot.R;
 public class FanRemoteControl extends Fragment {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+    private static final String USER = "user";
+    private static final String MESSAGE = "device";
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+
+    private IoTAPI ioTAPI;
+    private User user;
+    private Message device;
+
 
     private OnFragmentInteractionListener mListener;
 
@@ -35,21 +50,14 @@ public class FanRemoteControl extends Fragment {
         // Required empty public constructor
     }
 
-//    /**
-//     * Use this factory method to create a new instance of
-//     * this fragment using the provided parameters.
-//     *
-//     * @param param1 Parameter 1.
-//     * @param param2 Parameter 2.
-//     * @return A new instance of fragment FanRemoteControl.
-//     */
-    // TODO: Rename and change types and number of parameters
-    public static FanRemoteControl newInstance(/*String param1, String param2*/) {
+
+
+    public static FanRemoteControl newInstance(Message message, User user) {
         FanRemoteControl fragment = new FanRemoteControl();
-//        Bundle args = new Bundle();
-//        args.putString(ARG_PARAM1, param1);
-//        args.putString(ARG_PARAM2, param2);
-//        fragment.setArguments(args);
+        Bundle args = new Bundle();
+        args.putParcelable(USER,user);
+        args.putParcelable(MESSAGE, message);
+        fragment.setArguments(args);
         return fragment;
     }
 
@@ -57,19 +65,94 @@ public class FanRemoteControl extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            user = getArguments().getParcelable(USER);
+            device = getArguments().getParcelable(MESSAGE);
         }
+        ioTAPI = ApiUtils.getIoTService();
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        View v = inflater.inflate(R.layout.fragment_fan_remote_control, container, false);
+
+        TextView deviceName = v.findViewById(R.id.fanRemoteDeviceDescription);
+        deviceName.setText(device.getDeviceDescription());
+
+        Button fanPowerButton = v.findViewById(R.id.fanPowerButton);
+        Button ionButton = v.findViewById(R.id.ionButton);
+        Button fanSpeedButton = v.findViewById(R.id.fanSpeedButton);
+        Button quiteModeButton = v.findViewById(R.id.quiteModeButton);
+        Button rotationButton = v.findViewById(R.id.rotationButton);
+
+        fanPowerButton.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(1);
+            deviceAction(messageToDevice);
+        });
+
+        ionButton.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(5);
+            deviceAction(messageToDevice);
+        });
+
+        fanSpeedButton.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(2);
+            deviceAction(messageToDevice);
+        });
+
+        quiteModeButton.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(3);
+            deviceAction(messageToDevice);
+        });
+
+        rotationButton.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(4);
+            deviceAction(messageToDevice);
+        });
+
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_fan_remote_control, container, false);
+        return v;
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
+    public void deviceAction(Message message) {
+
+        CompositeDisposable compositeDisposable = new CompositeDisposable();
+        compositeDisposable.add(ioTAPI.remoteAction(message.getAction(), message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getRemoteOption())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<Message>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
+
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
+
+                                   @Override
+                                   public void onNext(Message value) {
+                                       //finishAPIAction(value);
+                                       Log.i("return message",value.encode());
+                                       Log.i("Device Action", "Device action request successful");
+                                   }
+                               }
+                )
+        );
+    }
+
+
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
             mListener.onFragmentInteraction(uri);

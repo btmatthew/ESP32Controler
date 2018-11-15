@@ -37,8 +37,8 @@
     <string name="device_information_title">Device Infromation</string>
     <string name="updatename">Update Device Name</string>
     <string name="title_activity_remote">RemoteActivity</string>
-    <string name="tab_text_1">Tab 1</string>
-    <string name="tab_text_2">Tab 2</string>
+    <string name="tab_text_1">TV</string>
+    <string name="tab_text_2">FAN</string>
     <string name="tab_text_3">Tab 3</string>
     <string name="section_format">Hello World from section: %1$d</string>
 
@@ -47,5 +47,10 @@
     <string name="TV">TV</string>
     <string name="channel">Channel</string>
     <string name="volume">Volume</string>
+    <string name="ion">Ion</string>
+    <string name="rotation">Rotation</string>
+    <string name="quite_mode">Quite Mode</string>
+    <string name="fan_speed">Fan Speed</string>
+    <string name="fan_power">Fan Power</string>
 
 </resources>

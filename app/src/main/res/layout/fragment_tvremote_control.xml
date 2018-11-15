@@ -22,8 +22,8 @@
 
     <ImageButton
         android:id="@+id/channelUp"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:src="@android:drawable/arrow_up_float"
@@ -35,8 +35,8 @@
 
     <ImageButton
         android:id="@+id/channelDown"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
         android:layout_marginTop="8dp"
         android:src="@android:drawable/arrow_down_float"
         app:layout_constraintEnd_toStartOf="@+id/volumeDown"
@@ -46,8 +46,8 @@
 
     <ImageButton
         android:id="@+id/volumeUp"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
         android:layout_marginTop="8dp"
         android:src="@android:drawable/arrow_up_float"
         app:layout_constraintBottom_toTopOf="@+id/volumeDown"
@@ -58,15 +58,15 @@
 
     <ImageButton
         android:id="@+id/volumeDown"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
         android:layout_marginTop="8dp"
+        android:contentDescription="TODO"
         android:src="@android:drawable/arrow_down_float"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/channelDown"
-        app:layout_constraintTop_toBottomOf="@+id/volumeUp"
-        android:contentDescription="TODO" />
+        app:layout_constraintTop_toBottomOf="@+id/volumeUp" />
 
     <ToggleButton
         android:id="@+id/tvPower"

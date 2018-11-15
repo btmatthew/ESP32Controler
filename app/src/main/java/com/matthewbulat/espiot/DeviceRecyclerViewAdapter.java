@@ -170,8 +170,12 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
                 break;
             case "deviceStatus":
                 Intent remoteIntent = new Intent(mContext,RemoteActivity.class);
+                message.setDeviceID(message.getDeviceID());
+                message.setDeviceDescription(message.getDeviceDescription());
+                Log.i("returnMessage",message.encode());
+                remoteIntent.putExtra("device", message);
+                remoteIntent.putExtra("user",user);
                 mContext.startActivity(remoteIntent);
-                //todo implement the multi tab activity for remote control, allow independent control for both the fan and tv
                 break;
         }
     }

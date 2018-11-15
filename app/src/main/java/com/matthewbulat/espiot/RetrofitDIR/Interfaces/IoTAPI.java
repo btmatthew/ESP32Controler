@@ -35,6 +35,7 @@ public interface IoTAPI {
 
     @GET("/remoteAction")
     Observable<Message> remoteAction(
+            @Query("action") String action,
             @Query("deviceId") String deviceId,
             @Query("userName") String userName,
             @Query("userToken") String userToken,
