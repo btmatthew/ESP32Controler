@@ -42,7 +42,7 @@ public class TVRemoteControl extends Fragment {
     private IoTAPI ioTAPI;
     private User user;
     private Message device;
-
+    private TextView deviceName;
     private OnFragmentInteractionListener mListener;
 
     public TVRemoteControl() {
@@ -74,7 +74,7 @@ public class TVRemoteControl extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_tvremote_control, container, false);
-        TextView deviceName = v.findViewById(R.id.tvRemoteDeviceDescription);
+        deviceName = v.findViewById(R.id.tvRemoteDeviceDescription);
         deviceName.setText(device.getDeviceDescription());
         ToggleButton tvPower = v.findViewById(R.id.tvPower);
         if (device.isTvStatus()) {
@@ -126,7 +126,11 @@ public class TVRemoteControl extends Fragment {
         return v;
     }
 
+    public void updateDeviceDescription(String deviceDecription){
+        deviceName.setText(device.getDeviceDescription());
+        device.setDeviceDescription(deviceDecription);
 
+    }
 
     public void deviceAction(Message message) {
 

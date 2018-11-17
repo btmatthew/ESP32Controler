@@ -42,7 +42,7 @@ public class FanRemoteControl extends Fragment {
     private IoTAPI ioTAPI;
     private User user;
     private Message device;
-
+    private TextView deviceName;
 
     private OnFragmentInteractionListener mListener;
 
@@ -76,7 +76,7 @@ public class FanRemoteControl extends Fragment {
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_fan_remote_control, container, false);
 
-        TextView deviceName = v.findViewById(R.id.fanRemoteDeviceDescription);
+        deviceName = v.findViewById(R.id.fanRemoteDeviceDescription);
         deviceName.setText(device.getDeviceDescription());
 
         Button fanPowerButton = v.findViewById(R.id.fanPowerButton);
@@ -151,7 +151,11 @@ public class FanRemoteControl extends Fragment {
                 )
         );
     }
+    public void updateDeviceDescription(String deviceDecription){
+        deviceName.setText(device.getDeviceDescription());
+        device.setDeviceDescription(deviceDecription);
 
+    }
 
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
@@ -189,5 +193,6 @@ public class FanRemoteControl extends Fragment {
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
+        //void updateDeviceDescriptionTextField(String deviceDecription);
     }
 }
