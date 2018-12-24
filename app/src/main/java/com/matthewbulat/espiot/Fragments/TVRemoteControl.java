@@ -1,4 +1,4 @@
-package com.matthewbulat.espiot.fragments;
+package com.matthewbulat.espiot.Fragments;
 
 import android.content.Context;
 import android.net.Uri;
@@ -8,9 +8,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import com.matthewbulat.espiot.Objects.Message;
 import com.matthewbulat.espiot.Objects.User;
@@ -27,33 +27,29 @@ import io.reactivex.schedulers.Schedulers;
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link FanRemoteControl.OnFragmentInteractionListener} interface
+ * {@link TVRemoteControl.OnFragmentInteractionListener} interface
  * to handle interaction events.
- * Use the {@link FanRemoteControl#newInstance} factory method to
+ * Use the {@link TVRemoteControl#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class FanRemoteControl extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
+public class TVRemoteControl extends Fragment {
+
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String USER = "user";
     private static final String MESSAGE = "device";
-
 
     private IoTAPI ioTAPI;
     private User user;
     private Message device;
     private TextView deviceName;
-
     private OnFragmentInteractionListener mListener;
 
-    public FanRemoteControl() {
+    public TVRemoteControl() {
         // Required empty public constructor
     }
 
-
-
-    public static FanRemoteControl newInstance(Message message, User user) {
-        FanRemoteControl fragment = new FanRemoteControl();
+    public static TVRemoteControl newInstance(Message message, User user) {
+        TVRemoteControl fragment = new TVRemoteControl();
         Bundle args = new Bundle();
         args.putParcelable(USER,user);
         args.putParcelable(MESSAGE, message);
@@ -69,59 +65,70 @@ public class FanRemoteControl extends Fragment {
             device = getArguments().getParcelable(MESSAGE);
         }
         ioTAPI = ApiUtils.getIoTService();
+
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_fan_remote_control, container, false);
-
-        deviceName = v.findViewById(R.id.fanRemoteDeviceDescription);
-        deviceName.setText(device.getDeviceDescription());
-
-        Button fanPowerButton = v.findViewById(R.id.fanPowerButton);
-        Button ionButton = v.findViewById(R.id.ionButton);
-        Button fanSpeedButton = v.findViewById(R.id.fanSpeedButton);
-        Button quiteModeButton = v.findViewById(R.id.quiteModeButton);
-        Button rotationButton = v.findViewById(R.id.rotationButton);
-
-        fanPowerButton.setOnClickListener(v1 -> {
-            Message messageToDevice = device;
-            messageToDevice.setAction("remoteaction");
-            messageToDevice.setRemoteOption(1);
-            deviceAction(messageToDevice);
-        });
-
-        ionButton.setOnClickListener(v1 -> {
-            Message messageToDevice = device;
-            messageToDevice.setAction("remoteaction");
-            messageToDevice.setRemoteOption(5);
-            deviceAction(messageToDevice);
-        });
-
-        fanSpeedButton.setOnClickListener(v1 -> {
-            Message messageToDevice = device;
-            messageToDevice.setAction("remoteaction");
-            messageToDevice.setRemoteOption(2);
-            deviceAction(messageToDevice);
-        });
-
-        quiteModeButton.setOnClickListener(v1 -> {
-            Message messageToDevice = device;
-            messageToDevice.setAction("remoteaction");
-            messageToDevice.setRemoteOption(3);
-            deviceAction(messageToDevice);
-        });
-
-        rotationButton.setOnClickListener(v1 -> {
-            Message messageToDevice = device;
-            messageToDevice.setAction("remoteaction");
-            messageToDevice.setRemoteOption(4);
-            deviceAction(messageToDevice);
-        });
-
         // Inflate the layout for this fragment
+        View v = inflater.inflate(R.layout.fragment_tvremote_control, container, false);
+        deviceName = v.findViewById(R.id.tvRemoteDeviceDescription);
+        deviceName.setText(device.getDeviceDescription());
+        ToggleButton tvPower = v.findViewById(R.id.tvPower);
+        if (device.isTvStatus()) {
+            tvPower.setChecked(true);
+        } else {
+            tvPower.setChecked(false);
+        }
+        tvPower.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(6);
+            deviceAction(messageToDevice);
+
+        });
+
+        ImageButton channelUp = v.findViewById(R.id.channelUp);
+        ImageButton channelDown = v.findViewById(R.id.channelDown);
+        ImageButton volumeUp = v.findViewById(R.id.volumeUp);
+        ImageButton volumeDown = v.findViewById(R.id.volumeDown);
+
+        channelUp.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(9);
+            deviceAction(messageToDevice);
+        });
+
+        channelDown.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(10);
+            deviceAction(messageToDevice);
+        });
+
+        volumeUp.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(7);
+            deviceAction(messageToDevice);
+        });
+
+        volumeDown.setOnClickListener(v1 -> {
+            Message messageToDevice = device;
+            messageToDevice.setAction("remoteaction");
+            messageToDevice.setRemoteOption(8);
+            deviceAction(messageToDevice);
+        });
+
         return v;
+    }
+
+    public void updateDeviceDescription(String deviceDecription){
+        deviceName.setText(device.getDeviceDescription());
+        device.setDeviceDescription(deviceDecription);
+
     }
 
     public void deviceAction(Message message) {
@@ -145,17 +152,13 @@ public class FanRemoteControl extends Fragment {
                                    public void onNext(Message value) {
                                        //finishAPIAction(value);
                                        Log.i("return message",value.encode());
-                                       Log.i("Device Action", "Device action request successful ");
+                                       Log.i("Device Action", "Device action request successful");
                                    }
                                }
                 )
         );
     }
-    public void updateDeviceDescription(String deviceDecription){
-        deviceName.setText(device.getDeviceDescription());
-        device.setDeviceDescription(deviceDecription);
 
-    }
 
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
@@ -168,9 +171,6 @@ public class FanRemoteControl extends Fragment {
         super.onAttach(context);
         if (context instanceof OnFragmentInteractionListener) {
             mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
         }
     }
 
@@ -191,8 +191,6 @@ public class FanRemoteControl extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
-        //void updateDeviceDescriptionTextField(String deviceDecription);
     }
 }

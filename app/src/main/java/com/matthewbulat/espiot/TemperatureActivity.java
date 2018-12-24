@@ -1,91 +1,83 @@
 package com.matthewbulat.espiot;
 
-
 import android.app.AlertDialog;
 import android.arch.persistence.room.Room;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 
 import com.matthewbulat.espiot.Database.devices.DeviceDB;
 import com.matthewbulat.espiot.Database.devices.DeviceTable;
-import com.matthewbulat.espiot.Database.user.UserDB;
-import com.matthewbulat.espiot.Database.user.UserTable;
+import com.matthewbulat.espiot.Objects.Message;
 import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
 import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
-import com.matthewbulat.espiot.Objects.ConstantValues;
-import com.matthewbulat.espiot.Objects.Message;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
-public class DeviceActions extends AppCompatActivity implements ConstantValues {
-    private ToggleButton lampControl;
-    private Message device;
-    private TextView deviceName;
+public class TemperatureActivity extends AppCompatActivity {
+
+    private TextView temperatureValue;
+    private TextView humidityValue;
+    private TextView sensorName;
     private IoTAPI ioTAPI;
     private User user;
+    private Message device;
+    private Handler mHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_temperature);
+
         ioTAPI = ApiUtils.getIoTService();
-        setContentView(R.layout.activity_device_actions);
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
-        Log.i("deviceDetails", String.format("device description is %s", device.getDeviceDescription()));
-        Log.i("userDetails", String.format("user name is %s, user token is %s", user.getUserName(), user.getUserToken()));
+        Log.i("user credentials",user.encode() );
+        temperatureValue = findViewById(R.id.actualTemperature);
+        humidityValue = findViewById(R.id.actualHumidity);
+        sensorName = findViewById(R.id.sensorName);
 
-        deviceName = findViewById(R.id.deviceDescriptionTextView);
-        deviceName.setText(device.getDeviceDescription());
-        lampControl = findViewById(R.id.turnLampButton);
-        if (device.getLampStatus().equals("on")) {
-            lampControl.setChecked(true);
-        } else {
-            lampControl.setChecked(false);
-        }
-        lampControl.setOnClickListener(view -> {
-            String action;
-            if (lampControl.isChecked()) {
-                action = "lampon";
-            } else {
-                action = "lampoff";
-            }
-            Message message = new Message();
-            message.setAction(action);
-            message.setDeviceID(device.getDeviceID());
-            deviceAction(message);
-
-        });
-
+        temperatureValue.setText(String.valueOf((int)device.getTemperature()+"°C"));
+        sensorName.setText(device.getDeviceDescription());
+        humidityValue.setText(String.valueOf((int)device.getHumidity()+"%"));
+        mHandler = new Handler();
+        startRepeatingTask();
     }
+
+    Runnable mStatusChecker = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Log.i("returnMessage", "Sensor action called");
+                Message message = new Message();
+                message.setDeviceID(device.getDeviceID());
+                message.setAction("deviceStatus");
+                deviceAction(message);
+            } finally {
+                // 100% guarantee that this always happens, even if
+                // your update method throws an exception
+                int mInterval = 30000;
+                mHandler.postDelayed(mStatusChecker, mInterval);
+            }
+        }
+    };
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -174,7 +166,7 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
     public void deviceAction(Message message) {
 
         CompositeDisposable compositeDisposable = new CompositeDisposable();
-        compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction())
+        compositeDisposable.add(ioTAPI.sensorAction(message.getAction(),message.getDeviceID(), user.getUserName(), user.getUserToken())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableObserver<Message>() {
@@ -192,6 +184,7 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
                                    public void onNext(Message value) {
                                        finishAPIAction(value);
                                        Log.i("Device Action", "Device action request successful");
+                                       Log.i("Device Action",value.encode());
                                    }
                                }
                 )
@@ -232,7 +225,7 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
                 Toast.makeText(context, "Your ESP device is disconnected from the network."
                         , Toast.LENGTH_LONG).show();
                 break;
-            case "communicationError":
+            case "CommunicationError":
                 Toast.makeText(context, "Internal network error, please try again in few moments."
                         , Toast.LENGTH_LONG).show();
                 break;
@@ -252,9 +245,41 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
                 deleteDeviceFromSystem(deviceTable);
             }
             break;
+            case "deviceStatus": {
+                temperatureValue.setText(String.valueOf((int)message.getTemperature()+"°C"));
+                humidityValue.setText(String.valueOf((int)message.getHumidity()+"%"));
+            }
+            break;
         }
     }
 
+    private void getDevicesDetails(String newDeviceName, String deviceID) {
+        DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
+
+        Completable.fromAction(() -> deviceDB.devicesDao().updateDeviceName(newDeviceName, deviceID))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new CompletableObserver() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        deviceDB.close();
+                        Toast.makeText(getApplicationContext(), "Device updated successfully."
+                                , Toast.LENGTH_LONG).show();
+                        sensorName.setText(newDeviceName);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        deviceDB.close();
+                        Log.e("Database", e.getMessage());
+                    }
+                });
+    }
 
     private void deleteDeviceFromSystem(DeviceTable deviceTable) {
         DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
@@ -287,31 +312,17 @@ public class DeviceActions extends AppCompatActivity implements ConstantValues {
                 });
     }
 
-    private void getDevicesDetails(String newDeviceName, String deviceID) {
-        DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
+    void startRepeatingTask() {
+        mStatusChecker.run();
+    }
 
-        Completable.fromAction(() -> deviceDB.devicesDao().updateDeviceName(newDeviceName, deviceID))
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new CompletableObserver() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
+    void stopRepeatingTask() {
+        mHandler.removeCallbacks(mStatusChecker);
+    }
 
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        deviceDB.close();
-                        Toast.makeText(getApplicationContext(), "Device updated successfully."
-                                , Toast.LENGTH_LONG).show();
-                        deviceName.setText(newDeviceName);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        deviceDB.close();
-                        Log.e("Database", e.getMessage());
-                    }
-                });
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        stopRepeatingTask();
     }
 }

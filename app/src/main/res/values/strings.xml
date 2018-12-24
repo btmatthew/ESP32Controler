@@ -52,5 +52,9 @@
     <string name="quite_mode">Quite Mode</string>
     <string name="fan_speed">Fan Speed</string>
     <string name="fan_power">Fan Power</string>
+    <string name="temperature">Temperature</string>
+    <string name="humidity">Humidity</string>
+    <string name="name">Name</string>
+    <string name="_0">0</string>
 
 </resources>

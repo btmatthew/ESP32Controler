@@ -1,36 +1,29 @@
 package com.matthewbulat.espiot;
 
+
 import android.app.AlertDialog;
 import android.arch.persistence.room.Room;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.Uri;
-import android.support.design.widget.TabLayout;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
-
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.matthewbulat.espiot.Database.devices.DeviceDB;
 import com.matthewbulat.espiot.Database.devices.DeviceTable;
-import com.matthewbulat.espiot.Objects.Message;
 import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
 import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
-import com.matthewbulat.espiot.Fragments.FanRemoteControl;
-import com.matthewbulat.espiot.Fragments.TVRemoteControl;
+import com.matthewbulat.espiot.Objects.ConstantValues;
+import com.matthewbulat.espiot.Objects.Message;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
@@ -40,43 +33,51 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
-public class RemoteActivity extends AppCompatActivity implements TVRemoteControl.OnFragmentInteractionListener, FanRemoteControl.OnFragmentInteractionListener {
-
+public class LampActivity extends AppCompatActivity implements ConstantValues {
+    private ToggleButton lampControl;
     private Message device;
-    private User user;
+    private TextView deviceName;
     private IoTAPI ioTAPI;
-    private TVRemoteControl tvRemoteControl;
-    private FanRemoteControl fanRemoteControl;
+    private User user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ioTAPI = ApiUtils.getIoTService();
-        setContentView(R.layout.activity_remote);
+        setContentView(R.layout.activity_lamp_actions);
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
+        Log.i("deviceDetails", String.format("device description is %s", device.getDeviceDescription()));
+        Log.i("userDetails", String.format("user name is %s, user token is %s", user.getUserName(), user.getUserToken()));
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
-        SectionsPagerAdapter mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        deviceName = findViewById(R.id.deviceDescriptionTextView);
+        deviceName.setText(device.getDeviceDescription());
+        lampControl = findViewById(R.id.turnLampButton);
+        if (device.getLampStatus().equals("on")) {
+            lampControl.setChecked(true);
+        } else {
+            lampControl.setChecked(false);
+        }
+        lampControl.setOnClickListener(view -> {
+            String action;
+            if (lampControl.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            deviceAction(message);
 
-        ViewPager mViewPager = findViewById(R.id.container);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
+        });
 
-        TabLayout tabLayout = findViewById(R.id.tabs);
-
-        mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
-        tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.device_options, menu);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.device_options, menu);
         return true;
     }
 
@@ -241,43 +242,6 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
         }
     }
 
-    private void getDevicesDetails(String newDeviceName, String deviceID) {
-        DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
-
-        Completable.fromAction(() -> deviceDB.devicesDao().updateDeviceName(newDeviceName, deviceID))
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new CompletableObserver() {
-                    @Override
-                    public void onSubscribe(Disposable d) {
-
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        deviceDB.close();
-                        Toast.makeText(getApplicationContext(), "Device updated successfully."
-                                , Toast.LENGTH_LONG).show();
-                        FragmentTransaction fragmentTransaction  = getSupportFragmentManager().beginTransaction();
-                        fragmentTransaction.detach(tvRemoteControl);
-                        fragmentTransaction.detach(fanRemoteControl);
-                        tvRemoteControl.updateDeviceDescription(newDeviceName);
-                        fanRemoteControl.updateDeviceDescription(newDeviceName);
-                        fragmentTransaction.attach(tvRemoteControl);
-                        fragmentTransaction.attach(fanRemoteControl);
-                        fragmentTransaction.commit();
-
-
-                        //deviceName.setText(newDeviceName);
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        deviceDB.close();
-                        Log.e("Database", e.getMessage());
-                    }
-                });
-    }
 
     private void deleteDeviceFromSystem(DeviceTable deviceTable) {
         DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
@@ -310,42 +274,31 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
                 });
     }
 
+    private void getDevicesDetails(String newDeviceName, String deviceID) {
+        DeviceDB deviceDB = Room.databaseBuilder(getApplicationContext(), DeviceDB.class, "devicedb").build();
 
-    @Override
-    public void onFragmentInteraction(Uri uri) {
+        Completable.fromAction(() -> deviceDB.devicesDao().updateDeviceName(newDeviceName, deviceID))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new CompletableObserver() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
 
-    }
+                    }
 
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+                    @Override
+                    public void onComplete() {
+                        deviceDB.close();
+                        Toast.makeText(getApplicationContext(), "Device updated successfully."
+                                , Toast.LENGTH_LONG).show();
+                        deviceName.setText(newDeviceName);
+                    }
 
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-
-            switch (position) {
-                case 0:
-                    tvRemoteControl = TVRemoteControl.newInstance(device, user);
-                    return tvRemoteControl;
-                case 1:
-                    fanRemoteControl = FanRemoteControl.newInstance(device, user);
-                    return fanRemoteControl;
-            }
-            // getItem is called to instantiate the fragment for the given page.
-            //todo return default fragment
-            return null;
-        }
-
-        @Override
-        public int getCount() {
-            // Show 2 total pages.
-            return 2;
-        }
+                    @Override
+                    public void onError(Throwable e) {
+                        deviceDB.close();
+                        Log.e("Database", e.getMessage());
+                    }
+                });
     }
 }

@@ -64,6 +64,8 @@ public class Message implements Parcelable {
         this.deviceID = in.readString();
         this.deviceType = in.readString();
         this.lampStatus = in.readString();
+        this.temperature = in.readFloat();
+        this.humidity = in.readFloat();
     }
 
     public static final Creator<Message> CREATOR = new Creator<Message>() {
@@ -85,7 +87,6 @@ public class Message implements Parcelable {
     public Message decode(String s) {
         return new Gson().fromJson(s, Message.class);
     }
-
 
 
     public String getDeviceDescription() {
@@ -131,6 +132,8 @@ public class Message implements Parcelable {
         parcel.writeString(deviceID);
         parcel.writeString(deviceType);
         parcel.writeString(lampStatus);
+        parcel.writeFloat(temperature);
+        parcel.writeFloat(humidity);
     }
 
     public String getLampStatus() {
@@ -221,7 +224,7 @@ public class Message implements Parcelable {
         this.temperature = temperature;
     }
 
-    public Message returnRemoteStatus(){
+    public Message returnRemoteStatus() {
         Message message = new Message();
         message.setFanMode(getFanMode());
         message.setFanSpeed(getFanSpeed());
@@ -229,16 +232,32 @@ public class Message implements Parcelable {
         message.setTvStatus(isTvStatus());
         message.setRotation(isRotation());
         message.setIon(isIon());
+        message.setAction(getAction());
         return message;
     }
 
-    public void setRemoteStatus(Message message){
+    public void setRemoteStatus(Message message) {
         setFanMode(message.getFanMode());
         setFanSpeed(message.getFanSpeed());
         setFanStatus(message.isFanStatus());
         setTvStatus(message.isTvStatus());
         setRotation(message.isRotation());
+        setAction(message.getAction());
         setIon(message.isIon());
+    }
+
+    public void setSensorStatus(Message message) {
+        setHumidity(message.getHumidity());
+        setTemperature(message.getTemperature());
+        setAction(message.getAction());
+    }
+
+    public Message returnSensorStatus() {
+        Message message = new Message();
+        message.setHumidity(getHumidity());
+        message.setTemperature(getTemperature());
+        message.setAction(getAction());
+        return message;
     }
 
 }

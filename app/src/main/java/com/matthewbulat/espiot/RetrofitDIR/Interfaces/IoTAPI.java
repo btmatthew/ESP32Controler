@@ -41,6 +41,13 @@ public interface IoTAPI {
             @Query("userToken") String userToken,
             @Query("remoteOption") int fanOption);
 
+    @GET("/sensorAction")
+    Observable<Message> sensorAction(
+            @Query("action") String action,
+            @Query("deviceId") String deviceId,
+            @Query("userName") String userName,
+            @Query("userToken") String userToken);
+
     @POST("/userLogin")
     @Headers("Content-Type: application/json")
     Observable<User> userLogin(@Body User body);
