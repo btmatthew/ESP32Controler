@@ -49,14 +49,14 @@ public class TemperatureActivity extends AppCompatActivity {
         ioTAPI = ApiUtils.getIoTService();
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
-        Log.i("user credentials",user.encode() );
+        Log.i("user credentials", user.encode());
         temperatureValue = findViewById(R.id.actualTemperature);
         humidityValue = findViewById(R.id.actualHumidity);
         sensorName = findViewById(R.id.sensorName);
 
-        temperatureValue.setText(String.valueOf((int)device.getTemperature()+"°C"));
+        temperatureValue.setText(String.valueOf((int) device.getTemperature() + "°C"));
         sensorName.setText(device.getDeviceDescription());
-        humidityValue.setText(String.valueOf((int)device.getHumidity()+"%"));
+        humidityValue.setText(String.valueOf((int) device.getHumidity() + "%"));
         mHandler = new Handler();
         startRepeatingTask();
     }
@@ -158,6 +158,9 @@ public class TemperatureActivity extends AppCompatActivity {
                 });
                 builder2.show();
                 return true;
+            case R.id.applicationSettings:
+                startActivity(new Intent(TemperatureActivity.this, Settings.class));
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -166,7 +169,7 @@ public class TemperatureActivity extends AppCompatActivity {
     public void deviceAction(Message message) {
 
         CompositeDisposable compositeDisposable = new CompositeDisposable();
-        compositeDisposable.add(ioTAPI.sensorAction(message.getAction(),message.getDeviceID(), user.getUserName(), user.getUserToken())
+        compositeDisposable.add(ioTAPI.sensorAction(message.getAction(), message.getDeviceID(), user.getUserName(), user.getUserToken())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableObserver<Message>() {
@@ -184,7 +187,7 @@ public class TemperatureActivity extends AppCompatActivity {
                                    public void onNext(Message value) {
                                        finishAPIAction(value);
                                        Log.i("Device Action", "Device action request successful");
-                                       Log.i("Device Action",value.encode());
+                                       Log.i("Device Action", value.encode());
                                    }
                                }
                 )
@@ -246,8 +249,8 @@ public class TemperatureActivity extends AppCompatActivity {
             }
             break;
             case "deviceStatus": {
-                temperatureValue.setText(String.valueOf((int)message.getTemperature()+"°C"));
-                humidityValue.setText(String.valueOf((int)message.getHumidity()+"%"));
+                temperatureValue.setText(String.valueOf((int) message.getTemperature() + "°C"));
+                humidityValue.setText(String.valueOf((int) message.getHumidity() + "%"));
             }
             break;
         }

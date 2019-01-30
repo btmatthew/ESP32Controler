@@ -152,6 +152,9 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
                 });
                 builder2.show();
                 return true;
+            case R.id.applicationSettings:
+                startActivity(new Intent(RemoteActivity.this, Settings.class));
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -258,7 +261,7 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
                         deviceDB.close();
                         Toast.makeText(getApplicationContext(), "Device updated successfully."
                                 , Toast.LENGTH_LONG).show();
-                        FragmentTransaction fragmentTransaction  = getSupportFragmentManager().beginTransaction();
+                        FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
                         fragmentTransaction.detach(tvRemoteControl);
                         fragmentTransaction.detach(fanRemoteControl);
                         tvRemoteControl.updateDeviceDescription(newDeviceName);

@@ -12,6 +12,8 @@ import android.os.AsyncTask;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -92,6 +94,12 @@ public class AddNewDevice extends AppCompatActivity {
         );
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.settings_values, menu);
+        return true;
+    }
 
     @Override
     protected void onResume() {
@@ -112,6 +120,9 @@ public class AddNewDevice extends AppCompatActivity {
         switch (item.getItemId()) {
             case android.R.id.home:
                 NavUtils.navigateUpFromSameTask(this);
+                return true;
+            case R.id.applicationSettings:
+                startActivity(new Intent(AddNewDevice.this, Settings.class));
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

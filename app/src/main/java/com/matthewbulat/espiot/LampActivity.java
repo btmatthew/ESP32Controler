@@ -153,6 +153,9 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
                 });
                 builder2.show();
                 return true;
+            case R.id.applicationSettings:
+                startActivity(new Intent(LampActivity.this, Settings.class));
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }

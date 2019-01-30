@@ -206,11 +206,13 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
-        int id = item.getItemId();
-
-        if (id == R.id.addNewDevice) {
-            Intent intent = new Intent(MainActivity.this, AddNewDevice.class);
-            startActivity(intent);
+        switch(item.getItemId()){
+            case R.id.addNewDevice:
+                startActivity(new Intent(MainActivity.this, AddNewDevice.class));
+                break;
+                case R.id.application_settings:
+                    startActivity(new Intent(MainActivity.this, Settings.class));
+                    break;
         }
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);

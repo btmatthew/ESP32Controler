@@ -7,17 +7,16 @@
         <item
             android:id="@+id/addNewDevice"
             android:icon="@drawable/ic_add_black_24dp"
-            android:title="Add New Device" />
+            android:title="@string/add_new_device" />
 
     </group>
 
-    <item android:title="Settings">
+    <item android:title="@string/settings">
         <menu>
             <item
                 android:id="@+id/application_settings"
                 android:icon="@drawable/ic_settings_black_24dp"
-                android:title="Settings" />
+                android:title="@string/settings" />
         </menu>
     </item>
-
 </menu>
