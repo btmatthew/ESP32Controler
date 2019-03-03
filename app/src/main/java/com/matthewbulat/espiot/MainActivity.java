@@ -2,7 +2,6 @@ package com.matthewbulat.espiot;
 
 import android.arch.persistence.room.Room;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
@@ -24,20 +23,11 @@ import com.matthewbulat.espiot.Database.user.UserDB;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.ConstantValues;
 import com.matthewbulat.espiot.Objects.Message;
-import com.matthewbulat.espiot.Objects.User;
 import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
 import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
@@ -48,9 +38,6 @@ import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, ConstantValues {
@@ -68,7 +55,7 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        getUserDetails();
+
         Log.i("onStart", "onStart called in MainActivity");
 
     }
@@ -76,16 +63,18 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onStart() {
         super.onStart();
+        getUserDetails();
     }
 
     private void setup() {
         Log.i("MethodCall", "Setup method called");
-        ioTAPI = ApiUtils.getIoTService();
+
         if (userTables.size() == 0) {
             Log.i("MethodCall", "User table is empty");
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             getApplicationContext().startActivity(intent);
         } else {
+            ioTAPI = new ApiUtils().getIoTService();
             Log.i("MethodCall", "User table contains values.");
 
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -107,6 +96,14 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    @Override
+    public void onResume() {
+        if (swipeContainer != null) {
+            swipeContainer.setRefreshing(true);
+            loadDeviceList(userTables.get(0).getUserName(), userTables.get(0).getUserToken(), "requestDevicesList");
+        }
+        super.onResume();
+    }
 
     private void getUserDetails() {
         Log.i("User Database request", "getUserMethodCalled");
@@ -160,7 +157,7 @@ public class MainActivity extends AppCompatActivity
                                 arrayListOfDevices.add(message);
                             }
                             deviceRecyclerView = findViewById(R.id.device_recycler_view);
-                            deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext(),userTables);
+                            deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext(),userTables,ioTAPI);
                             deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
                             deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
 
@@ -182,16 +179,6 @@ public class MainActivity extends AppCompatActivity
                     }
                 });
     }
-
-    @Override
-    public void onResume() {
-        if (swipeContainer != null) {
-            swipeContainer.setRefreshing(true);
-            loadDeviceList(userTables.get(0).getUserName(), userTables.get(0).getUserToken(), "requestDevicesList");
-        }
-        super.onResume();
-    }
-
 
     @Override
     public void onBackPressed() {
@@ -259,8 +246,10 @@ public class MainActivity extends AppCompatActivity
             deviceTable.setDeviceType(message1.getDeviceType());
             deviceTableArrayList.add(deviceTable);
         });
-
-        Completable.fromAction(() -> deviceDB.devicesDao().addDevices(deviceTableArrayList))
+        Completable.fromAction(() -> {
+            deviceDB.devicesDao().nukeTable();
+            deviceDB.devicesDao().addDevices(deviceTableArrayList);
+        })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
@@ -278,7 +267,7 @@ public class MainActivity extends AppCompatActivity
                                     deviceRecyclerViewAdapter.clear();
                                     deviceRecyclerViewAdapter.addAll(arrayListOfDevices);
                                 } else {
-                                    deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext(),userTables);
+                                    deviceRecyclerViewAdapter = new DeviceRecyclerViewAdapter(arrayListOfDevices, getApplicationContext(),userTables,ioTAPI);
                                 }
                                 deviceRecyclerView.setAdapter(deviceRecyclerViewAdapter);
                                 deviceRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));

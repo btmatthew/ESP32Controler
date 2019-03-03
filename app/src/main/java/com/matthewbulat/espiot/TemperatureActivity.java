@@ -46,7 +46,7 @@ public class TemperatureActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_temperature);
 
-        ioTAPI = ApiUtils.getIoTService();
+        ioTAPI = new ApiUtils().getIoTService();
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
         Log.i("user credentials", user.encode());
@@ -59,6 +59,12 @@ public class TemperatureActivity extends AppCompatActivity {
         humidityValue.setText(String.valueOf((int) device.getHumidity() + "%"));
         mHandler = new Handler();
         startRepeatingTask();
+    }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        ioTAPI = new ApiUtils().getIoTService();
     }
 
     Runnable mStatusChecker = new Runnable() {
@@ -167,7 +173,7 @@ public class TemperatureActivity extends AppCompatActivity {
     }
 
     public void deviceAction(Message message) {
-
+        //ioTAPI = ApiUtils.getIoTService();
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.sensorAction(message.getAction(), message.getDeviceID(), user.getUserName(), user.getUserToken())
                 .subscribeOn(Schedulers.io())
@@ -195,7 +201,7 @@ public class TemperatureActivity extends AppCompatActivity {
     }
 
     public void updateDeviceDescription(Message message, User user) {
-
+        //ioTAPI = ApiUtils.getIoTService();
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.updateDeviceDescription(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction(), message.getDeviceDescription())
                 .subscribeOn(Schedulers.io())

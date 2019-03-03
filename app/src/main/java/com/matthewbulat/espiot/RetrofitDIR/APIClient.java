@@ -6,9 +6,9 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 public class APIClient {
 
-    private static Retrofit retrofit = null;
+    private Retrofit retrofit = null;
 
-    static Retrofit getClient(String baseUrl) {
+    Retrofit getClient(String baseUrl) {
 
         if (retrofit==null) {
             retrofit = new Retrofit.Builder()

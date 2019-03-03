@@ -75,7 +75,7 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ioTAPI = ApiUtils.getIoTService();
+        ioTAPI = new ApiUtils().getIoTService();
         setContentView(R.layout.activity_register);
         // Set up the login form.
         userDB = Room.databaseBuilder(getApplicationContext(), UserDB.class, "userdb").build();
@@ -100,6 +100,13 @@ public class RegisterActivity extends AppCompatActivity implements LoaderCallbac
 
         mProgressView = findViewById(R.id.login_progress);
     }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        ioTAPI = new ApiUtils().getIoTService();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();

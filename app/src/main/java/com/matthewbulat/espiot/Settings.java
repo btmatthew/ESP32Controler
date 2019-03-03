@@ -75,7 +75,7 @@ public class Settings extends AppCompatPreferenceActivity {
         sBindPreferenceSummaryToValueListener.onPreferenceChange(preference,
                 PreferenceManager
                         .getDefaultSharedPreferences(preference.getContext())
-                        .getString(preference.getKey(), ""));
+                        .getString(preference.getKey(), new PreferenceReader().returnDefault(preference.getKey())));
     }
 
     @Override
@@ -146,6 +146,9 @@ public class Settings extends AppCompatPreferenceActivity {
             setHasOptionsMenu(true);
 
             bindPreferenceSummaryToValue(findPreference("server_address"));
+            bindPreferenceSummaryToValue(findPreference("port_number"));
+            bindPreferenceSummaryToValue(findPreference("port_number_web_server"));
+            bindPreferenceSummaryToValue(findPreference("api_address_prefix"));
         }
 
         @Override
@@ -159,3 +162,4 @@ public class Settings extends AppCompatPreferenceActivity {
         }
     }
 }
+

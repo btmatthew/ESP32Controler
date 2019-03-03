@@ -15,7 +15,6 @@ import android.widget.Toast;
 import com.matthewbulat.espiot.Database.user.UserTable;
 import com.matthewbulat.espiot.Objects.Message;
 import com.matthewbulat.espiot.Objects.User;
-import com.matthewbulat.espiot.RetrofitDIR.ApiUtils;
 import com.matthewbulat.espiot.RetrofitDIR.Interfaces.IoTAPI;
 
 import java.util.ArrayList;
@@ -29,14 +28,13 @@ import io.reactivex.schedulers.Schedulers;
 public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecyclerViewAdapter.ViewHolder> {
     private ArrayList<Message> deviceList;
     private Context mContext;
-    private boolean itemSelected;
     private IoTAPI ioTAPI;
     private List<UserTable> userTables;
 
-    DeviceRecyclerViewAdapter(ArrayList<Message> deviceList, Context mContext, List<UserTable> userTables) {
+    DeviceRecyclerViewAdapter(ArrayList<Message> deviceList, Context mContext, List<UserTable> userTables, IoTAPI ioTAPI) {
         this.deviceList = deviceList;
         this.mContext = mContext;
-        this.ioTAPI = ApiUtils.getIoTService();
+        this.ioTAPI = ioTAPI;
         this.userTables = userTables;
     }
 
@@ -69,9 +67,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         }
         holder.deviceDescription.setText(deviceList.get(position).getDeviceDescription());
         holder.parentLayout.setOnClickListener((view) -> {
-                    if (!itemSelected) {
                         getDeviceStatus(message, userTables.get(0).returnUserObject());
-                    }
                 }
         );
     }
@@ -125,6 +121,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
 
                                    @Override
                                    public void onNext(Message value) {
+                                       message.setAction(value.getAction());
                                        switch (message.getDeviceType()) {
                                            case "Lamp":
                                                message.setLampStatus(value.getLampStatus());

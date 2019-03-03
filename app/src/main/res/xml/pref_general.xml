@@ -11,8 +11,40 @@
         android:maxLines="1"
         android:selectAllOnFocus="true"
         android:singleLine="true"
-        android:title="@string/serverAddress"
+        android:title="@string/serverAddressName"
         tools:capitalize="none" />
 
+    <EditTextPreference
+        android:capitalize="words"
+        android:defaultValue="@string/pref_default_port_number_web_socket"
+        android:inputType="textCapWords"
+        android:key="port_number"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="@string/portNumberWebSocketName"
+        tools:capitalize="none" />
+
+    <EditTextPreference
+        android:capitalize="words"
+        android:defaultValue="@string/pref_default_port_number_web_server"
+        android:inputType="textCapWords"
+        android:key="port_number_web_server"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="@string/portNumberWebServerName"
+        tools:capitalize="none" />
+
+    <EditTextPreference
+        android:capitalize="words"
+        android:defaultValue="@string/pref_default_address_prefix"
+        android:inputType="textCapWords"
+        android:key="api_address_prefix"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="@string/api_address_prefix"
+        tools:capitalize="none" />
 
 </PreferenceScreen>

@@ -51,7 +51,7 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ioTAPI = ApiUtils.getIoTService();
+        ioTAPI = new ApiUtils().getIoTService();
         setContentView(R.layout.activity_remote);
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
@@ -72,6 +72,11 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
         tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));
     }
 
+    @Override
+    public void onResume(){
+        super.onResume();
+        ioTAPI = new ApiUtils().getIoTService();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -161,7 +166,7 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
     }
 
     public void deviceAction(Message message) {
-
+        //ioTAPI = ApiUtils.getIoTService();
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction())
                 .subscribeOn(Schedulers.io())
@@ -188,7 +193,6 @@ public class RemoteActivity extends AppCompatActivity implements TVRemoteControl
     }
 
     public void updateDeviceDescription(Message message, User user) {
-
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.updateDeviceDescription(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction(), message.getDeviceDescription())
                 .subscribeOn(Schedulers.io())

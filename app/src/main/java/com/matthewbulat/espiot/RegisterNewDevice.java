@@ -186,6 +186,8 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
         private final String userName;
         private final String userToken;
         private final String deviceDescription;
+        private final String serverAddress;
+        private final String portNumber;
 
         RegisterDeviceTask(String networkName, String networkPassword, String userName,
                            String userToken, String deviceDescription) {
@@ -194,6 +196,8 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
             this.userName = userName;
             this.userToken = userToken;
             this.deviceDescription = deviceDescription;
+            this.serverAddress=new PreferenceReader().readPreference("server_address");
+            this.portNumber=new PreferenceReader().readPreference("port_number");
         }
 
         @Override
@@ -221,6 +225,8 @@ public class RegisterNewDevice extends AppCompatActivity implements ConstantValu
                 jsonParam.put("userName", userName);
                 jsonParam.put("userToken", userToken);
                 jsonParam.put("description", deviceDescription);
+                jsonParam.put("serverAddress", serverAddress);
+                jsonParam.put("portNumber", portNumber);
 
                 Log.i("JSON", jsonParam.toString());
                 DataOutputStream os = new DataOutputStream(conn.getOutputStream());

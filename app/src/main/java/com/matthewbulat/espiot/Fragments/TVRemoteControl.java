@@ -64,8 +64,14 @@ public class TVRemoteControl extends Fragment {
             user = getArguments().getParcelable(USER);
             device = getArguments().getParcelable(MESSAGE);
         }
-        ioTAPI = ApiUtils.getIoTService();
+        ioTAPI = new ApiUtils().getIoTService();
 
+    }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        ioTAPI = new ApiUtils().getIoTService();
     }
 
     @Override

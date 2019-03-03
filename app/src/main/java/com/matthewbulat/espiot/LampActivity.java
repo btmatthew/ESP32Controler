@@ -43,7 +43,7 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ioTAPI = ApiUtils.getIoTService();
+        ioTAPI = new ApiUtils().getIoTService();
         setContentView(R.layout.activity_lamp_actions);
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
@@ -162,7 +162,6 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
     }
 
     public void deviceAction(Message message) {
-
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction())
                 .subscribeOn(Schedulers.io())
@@ -189,7 +188,6 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
     }
 
     public void updateDeviceDescription(Message message, User user) {
-
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.updateDeviceDescription(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction(), message.getDeviceDescription())
                 .subscribeOn(Schedulers.io())
