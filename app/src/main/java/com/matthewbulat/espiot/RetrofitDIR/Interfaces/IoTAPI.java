@@ -33,6 +33,14 @@ public interface IoTAPI {
             @Query("lampAction") String lampAction,
             @Query("newDeviceDescription") String newDeviceDescription);
 
+    @GET("/lampAction")
+    Observable<Message> lampActions(
+            @Query("deviceId") String deviceId,
+            @Query("userName") String userName,
+            @Query("userToken") String userToken,
+            @Query("lampAction") String lampAction,
+            @Query("relayID") String relayID);
+
     @GET("/remoteAction")
     Observable<Message> remoteAction(
             @Query("action") String action,

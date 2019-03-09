@@ -61,15 +61,19 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
                 holder.deviceType.setImageResource(R.drawable.ic_baseline_blur_on_24px);
                 message.setAction("deviceStatus");
                 break;
+            case "3InputRelayLamp":
+                holder.deviceType.setImageResource(R.drawable.ic_desk_lamp);
+                message.setAction("lampstatus");
+                break;
+            case "2InputRelayLamp":
+                holder.deviceType.setImageResource(R.drawable.ic_desk_lamp);
+                message.setAction("lampstatus");
+                break;
             default:
                 holder.deviceType.setImageResource(R.drawable.ic_baseline_error_outline_24px);
-
         }
         holder.deviceDescription.setText(deviceList.get(position).getDeviceDescription());
-        holder.parentLayout.setOnClickListener((view) -> {
-                        getDeviceStatus(message, userTables.get(0).returnUserObject());
-                }
-        );
+        holder.parentLayout.setOnClickListener((view) -> getDeviceStatus(message, userTables.get(0).returnUserObject()));
     }
 
     void clear() {
@@ -102,16 +106,16 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
         }
     }
 
-
+    CompositeDisposable compositeDisposable;
     private void getDeviceStatus(Message message, User user) {
-        CompositeDisposable compositeDisposable = new CompositeDisposable();
+        compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableObserver<Message>() {
                                    @Override
                                    public void onComplete() {
-                                       compositeDisposable.dispose();
+
                                    }
 
                                    @Override
@@ -121,19 +125,26 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
 
                                    @Override
                                    public void onNext(Message value) {
-                                       message.setAction(value.getAction());
                                        switch (message.getDeviceType()) {
+                                           case "3InputRelayLamp":
+                                           case "2InputRelayLamp":
                                            case "Lamp":
-                                               message.setLampStatus(value.getLampStatus());
-                                               responseAction(message, user);
+                                               value.setDeviceDescription(message.getDeviceDescription());
+                                               value.setDeviceID(message.getDeviceID());
+                                               value.setDeviceType(message.getDeviceType());
+                                               responseAction(value, user);
                                                break;
                                            case "IrRemote":
-                                               message.setRemoteStatus(value.returnRemoteStatus());
-                                               responseAction(message, user);
+                                               value.setDeviceDescription(message.getDeviceDescription());
+                                               value.setDeviceID(message.getDeviceID());
+                                               value.setDeviceType(message.getDeviceType());
+                                               responseAction(value, user);
                                                break;
                                            case "TempSensor":
-                                               message.setSensorStatus(value.returnSensorStatus());
-                                               responseAction(message, user);
+                                               value.setDeviceDescription(message.getDeviceDescription());
+                                               value.setDeviceID(message.getDeviceID());
+                                               value.setDeviceType(message.getDeviceType());
+                                               responseAction(value, user);
                                                break;
                                            default:
                                                //todo include default reply
@@ -146,6 +157,7 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
     }
 
     private void responseAction(Message message, User user) {
+        compositeDisposable.clear();
         switch (message.getAction()) {
             case "deviceNotConnectedToSystem":
                 Toast.makeText(mContext, "Your ESP device is disconnected from the network."
@@ -189,7 +201,6 @@ public class DeviceRecyclerViewAdapter extends RecyclerView.Adapter<DeviceRecycl
                         mContext.startActivity(sensorIntent);
                         break;
                 }
-
                 break;
         }
     }

@@ -35,6 +35,9 @@ import io.reactivex.schedulers.Schedulers;
 
 public class LampActivity extends AppCompatActivity implements ConstantValues {
     private ToggleButton lampControl;
+    private ToggleButton lampControl1;
+    private ToggleButton lampControl2;
+    private ToggleButton lampControlAll;
     private Message device;
     private TextView deviceName;
     private IoTAPI ioTAPI;
@@ -44,9 +47,25 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ioTAPI = new ApiUtils().getIoTService();
-        setContentView(R.layout.activity_lamp_actions);
         device = getIntent().getParcelableExtra("device");
         user = getIntent().getParcelableExtra("user");
+        switch (device.getDeviceType()) {
+            case "Lamp":
+                setContentView(R.layout.activity_lamp_actions);
+                setupLayoutForLamp();
+                break;
+            case "2InputRelayLamp":
+                setContentView(R.layout.activity_lamp_actions2);
+                setupLayoutFor2RelayLamp();
+                break;
+            case "3InputRelayLamp":
+                setContentView(R.layout.activity_lamp_actions3);
+                setupLayoutFor3RelayLamp();
+                break;
+        }
+    }
+
+    private void setupLayoutForLamp(){
         Log.i("deviceDetails", String.format("device description is %s", device.getDeviceDescription()));
         Log.i("userDetails", String.format("user name is %s, user token is %s", user.getUserName(), user.getUserToken()));
 
@@ -71,7 +90,164 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
             deviceAction(message);
 
         });
+    }
 
+    private void setupLayoutFor2RelayLamp(){
+        Log.i("deviceDetails", String.format("device description is %s", device.getDeviceDescription()));
+        Log.i("userDetails", String.format("user name is %s, user token is %s", user.getUserName(), user.getUserToken()));
+
+        //deviceName = findViewById(R.id.deviceDescriptionTextView);
+        //deviceName.setText(device.getDeviceDescription());
+        lampControl = findViewById(R.id.turnLampButton1);
+        lampControl1 = findViewById(R.id.turnLampButton2);
+        lampControlAll = findViewById(R.id.turnLampButton3);
+        String[] lampsStatus = device.getLampStatus().split(",");
+
+        if (lampsStatus[0].equals("on")) {
+            lampControl.setChecked(true);
+        } else {
+            lampControl.setChecked(false);
+        }
+
+        if (lampsStatus[1].equals("on")) {
+            lampControl1.setChecked(true);
+        } else {
+            lampControl1.setChecked(false);
+        }
+
+        if (lampsStatus[0].equals("on") && lampsStatus[1].equals("on")) {
+            lampControlAll.setChecked(true);
+        } else {
+            lampControlAll.setChecked(false);
+        }
+
+        lampControlAll.setOnClickListener(view -> {
+            String action;
+            if (lampControlAll.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("0");
+            deviceActionRelay(message);
+        });
+
+        lampControl.setOnClickListener(view -> {
+            String action;
+            if (lampControl.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("1");
+            deviceActionRelay(message);
+        });
+
+        lampControl1.setOnClickListener(view -> {
+            String action;
+            if (lampControl.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("2");
+            deviceActionRelay(message);
+        });
+    }
+
+    private void setupLayoutFor3RelayLamp(){
+        Log.i("deviceDetails", String.format("device description is %s", device.getDeviceDescription()));
+        Log.i("userDetails", String.format("user name is %s, user token is %s", user.getUserName(), user.getUserToken()));
+
+        //deviceName = findViewById(R.id.deviceDescriptionTextView);
+        //deviceName.setText(device.getDeviceDescription());
+        lampControl = findViewById(R.id.turnLampButton4);
+        lampControl1 = findViewById(R.id.turnLampButton5);
+        lampControl2 = findViewById(R.id.turnLampButton6);
+        lampControlAll = findViewById(R.id.turnLampButton7);
+        String[] lampsStatus = device.getLampStatus().split(",");
+
+        if (lampsStatus[0].equals("on")) {
+            lampControl.setChecked(true);
+        } else {
+            lampControl.setChecked(false);
+        }
+
+        if (lampsStatus[1].equals("on")) {
+            lampControl1.setChecked(true);
+        } else {
+            lampControl1.setChecked(false);
+        }
+
+        if (lampsStatus[0].equals("on") && lampsStatus[1].equals("on")) {
+            lampControlAll.setChecked(true);
+        } else {
+            lampControlAll.setChecked(false);
+        }
+
+        lampControlAll.setOnClickListener(view -> {
+            String action;
+            if (lampControlAll.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("0");
+            deviceActionRelay(message);
+        });
+
+        lampControl.setOnClickListener(view -> {
+            String action;
+            if (lampControl.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("1");
+            deviceActionRelay(message);
+        });
+
+        lampControl1.setOnClickListener(view -> {
+            String action;
+            if (lampControl.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("2");
+            deviceActionRelay(message);
+        });
+        lampControl2.setOnClickListener(view -> {
+            String action;
+            if (lampControl2.isChecked()) {
+                action = "lampon";
+            } else {
+                action = "lampoff";
+            }
+            Message message = new Message();
+            message.setAction(action);
+            message.setDeviceID(device.getDeviceID());
+            message.setRelayID("3");
+            deviceActionRelay(message);
+        });
     }
 
     @Override
@@ -164,6 +340,32 @@ public class LampActivity extends AppCompatActivity implements ConstantValues {
     public void deviceAction(Message message) {
         CompositeDisposable compositeDisposable = new CompositeDisposable();
         compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<Message>() {
+                                   @Override
+                                   public void onComplete() {
+                                       compositeDisposable.dispose();
+                                   }
+
+                                   @Override
+                                   public void onError(Throwable e) {
+                                       Log.e("Login", e.getMessage());
+                                   }
+
+                                   @Override
+                                   public void onNext(Message value) {
+                                       finishAPIAction(value);
+                                       Log.i("Device Action", "Device action request successful");
+                                   }
+                               }
+                )
+        );
+    }
+
+    public void deviceActionRelay(Message message) {
+        CompositeDisposable compositeDisposable = new CompositeDisposable();
+        compositeDisposable.add(ioTAPI.lampActions(message.getDeviceID(), user.getUserName(), user.getUserToken(), message.getAction(),message.getRelayID())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableObserver<Message>() {

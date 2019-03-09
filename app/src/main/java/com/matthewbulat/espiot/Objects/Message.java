@@ -28,6 +28,9 @@ public class Message implements Parcelable {
     @SerializedName("lampStatus")
     @Expose
     private String lampStatus;
+    @SerializedName("relayID")
+    @Expose
+    private String relayID;
     @SerializedName("remoteOption")
     @Expose
     private int remoteOption;
@@ -224,6 +227,14 @@ public class Message implements Parcelable {
         this.temperature = temperature;
     }
 
+    public String getRelayID() {
+        return relayID;
+    }
+
+    public void setRelayID(String relayID) {
+        this.relayID = relayID;
+    }
+
     public Message returnRemoteStatus() {
         Message message = new Message();
         message.setFanMode(getFanMode());
@@ -259,5 +270,6 @@ public class Message implements Parcelable {
         message.setAction(getAction());
         return message;
     }
+
 
 }
